@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand: #10b981;
+    --brand-dark: #0a0a0a;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #0a0a0a;
+    @apply text-white antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Global Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-brand-dark;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full border-2 border-brand-dark;
+    @apply hover:bg-white/20 transition-colors;
+  }
+
+  /* Branded Custom Scrollbar for specific sections */
+  .scrollbar-custom::-webkit-scrollbar {
+    height: 5px;
+    width: 5px;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-track {
+    @apply bg-white/[0.02] rounded-full border border-white/[0.02];
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    @apply bg-white/40 rounded-full hover:bg-white/60 transition-all;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl;
+  }
+
+  .glass {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400;
+  }
+
+  .btn-primary {
+    @apply bg-brand-500 hover:bg-brand-400 text-black font-bold px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95 inline-flex items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 text-white font-medium px-5 py-2.5 rounded-xl border border-white/10 transition-all duration-200 active:scale-95 inline-flex items-center gap-2;
+  }
+
+  .tab-btn {
+    @apply px-5 py-2 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer;
+  }
+
+  .tab-active {
+    @apply bg-brand-500 text-black shadow-lg shadow-brand-500/20;
+  }
+
+  .tab-inactive {
+    @apply text-white/50 hover:text-white/80 hover:bg-white/5;
+  }
+
+  .score-badge {
+    @apply text-brand-500 font-bold tabular-nums;
+  }
+
+  .agent-tag {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full border border-white/10;
+  }
+}
+
+/* Automation score counter animation */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count {
+  animation: countUp 0.8s ease-out forwards;
+}
+
+
+/* PDF Report Specifics */
+.pdf-report {
+  @apply bg-white text-gray-900;
+}
+
+.pdf-report .card {
+  @apply bg-gray-50/50 border-gray-200 shadow-none backdrop-blur-none text-gray-900;
+}
+
+.pdf-report .gradient-text {
+  @apply text-brand-600 bg-none;
+}
+
+.pdf-report .text-white\/90,
+.pdf-report .text-white\/80,
+.pdf-report .text-white\/60,
+.pdf-report .text-white {
+  @apply text-gray-900;
+}
+
+.pdf-report .text-white\/40,
+.pdf-report .text-white\/30,
+.pdf-report .text-white\/20 {
+  @apply text-gray-500;
+}
+
+.pdf-report .border-white\/10,
+.pdf-report .border-white\/5 {
+  @apply border-gray-100;
+}
+
+.pdf-section {
+  @apply mb-16 pb-12 border-b border-gray-50 last:border-0;
+}
+
+.pdf-section-title {
+  @apply text-2xl font-black text-gray-900 uppercase tracking-widest border-b-4 border-brand-500/20 pb-4 mb-10;
+}
+
+.pdf-data-row {
+  @apply flex py-2 border-b border-gray-100 last:border-0;
+}
+
+.pdf-data-label {
+  @apply w-1/3 text-xs font-bold text-gray-500 uppercase;
+}
+
+.pdf-data-value {
+  @apply w-2/3 text-sm text-gray-900;
+}
+
+.pdf-atomic,
+.pdf-section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.pdf-report {
+  page-break-after: auto;
+}
+
+.page-break {
+  page-break-before: always;
+}
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+}
