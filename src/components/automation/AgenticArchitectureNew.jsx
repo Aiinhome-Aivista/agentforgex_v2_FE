@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Loader2, AlertCircle, Box, Server } from "lucide-react";
 import { getAutomationArchitecture, runAutomationArchitecture } from "../../services/api";
-import { toPng } from "html-to-image";
 
 // Components
 import { ArchitectureHeader, ExecutionLog } from "./components/ArchitectureUI";
@@ -45,39 +44,9 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [apiResponse, setApiResponse] = useState(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  
   const cancelRef = useRef(false);
   const lastFetchedId = useRef(null);
   const logRef = useRef(null);
-  const containerRef = useRef(null);
-
-  const handleDownloadImage = async () => {
-    if (!containerRef.current) return;
-    setIsDownloading(true);
-    try {
-      const dataUrl = await toPng(containerRef.current, {
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        filter: (node) => {
-          // Hide the header buttons from the screenshot
-          if (node?.getAttribute && node.getAttribute('data-html2canvas-ignore') !== null) return false;
-          return true;
-        }
-      });
-      
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `Agent_Architecture_${suggestionId || "Workflow"}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Failed to download image:", error);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   // Fetch Architecture Data
   useEffect(() => {
@@ -407,7 +376,6 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
 
   return (
     <div
-      ref={containerRef}
       style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
       className="w-full bg-white relative min-h-[860px] flex flex-col p-6"
     >
@@ -418,8 +386,6 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
           completedNodes={completedNodes} 
           onReset={reset} 
           onRun={runFlow}
-          onDownload={handleDownloadImage}
-          isDownloading={isDownloading}
         />
 
         <div className="flex flex-col gap-6">
