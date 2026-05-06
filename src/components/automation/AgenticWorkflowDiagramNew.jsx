@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { ZoomIn, ZoomOut, Maximize, Maximize2, Minimize2, RefreshCw, Loader2, Download } from "lucide-react";
-import { toPng } from "html-to-image";
+import { ZoomIn, ZoomOut, Maximize, Maximize2, Minimize2, RefreshCw, Loader2 } from "lucide-react";
 import { getProcessFlow } from "../../services/api";
 import { 
   TITLE_W, 
@@ -42,34 +41,6 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   const lastFetchedId = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownloadImage = async () => {
-    if (!containerRef.current) return;
-    setIsDownloading(true);
-    try {
-      const dataUrl = await toPng(containerRef.current, {
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        filter: (node) => {
-          // Hide the floating controls from the screenshot
-          if (node?.classList && node.classList.contains('floating-controls')) return false;
-          return true;
-        }
-      });
-      
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `${diagramData.title?.replace(/\s+/g, "_") || "Process_Flow"}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Failed to download image:", error);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   // Sync internal data when propData changes
   useEffect(() => {
@@ -381,14 +352,13 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
             { icon: ZoomIn, onClick: () => handleZoom(1.15), title: "Zoom In" },
             { icon: ZoomOut, onClick: () => handleZoom(0.85), title: "Zoom Out" },
             { icon: RefreshCw, onClick: handleReset, title: "Reset View" },
-            { icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen, title: isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen" },
-            { icon: isDownloading ? Loader2 : Download, onClick: handleDownloadImage, title: "Download Diagram", spin: isDownloading }
+            { icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen, title: isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen" }
           ].map((btn, i) => (
             <button
               key={i}
               onClick={btn.onClick}
               title={btn.title}
-              disabled={isDownloading && btn.icon === Loader2}
+              disabled={false}
               className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-lg hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all text-slate-700"
             >
               <btn.icon size={18} className={btn.spin ? "animate-spin" : ""} />
