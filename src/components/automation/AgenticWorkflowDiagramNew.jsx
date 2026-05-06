@@ -35,7 +35,7 @@ const WHITE = "#ffffff";
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
-export default function SwimlaneDiagram({ data: propData, suggestionId }) {
+export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf = false }) {
   const [diagramData, setDiagramData] = useState(propData || sampleDiagramData);
   const [nodes, setNodes] = useState(() => buildNodeMap(diagramData));
   const [loading, setLoading] = useState(false);
@@ -223,6 +223,117 @@ export default function SwimlaneDiagram({ data: propData, suggestionId }) {
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
           <p className="text-sm font-medium text-slate-500 tracking-tight">Loading automation workflow...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PDF static render: full-size, no zoom/pan, no controls ──
+  if (forPdf) {
+    const totalW = TITLE_W + LABEL_W + svgW;
+    return (
+      <div className="w-full" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+        <div
+          style={{
+            display: "flex",
+            width: totalW,
+            height: svgH,
+            background: WHITE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 8,
+            overflow: "visible",
+            position: "relative",
+          }}
+        >
+          {/* Title Column */}
+          <div style={{
+            width: TITLE_W,
+            background: WHITE,
+            borderRight: `1px solid ${BORDER}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            writingMode: "vertical-rl",
+            fontWeight: 700,
+            fontSize: 11,
+            color: "#111",
+            letterSpacing: "0.05em",
+            minHeight: "100%",
+            padding: "20px 0",
+            textTransform: "capitalize",
+          }}>
+            {diagramData.title}
+          </div>
+
+          {/* Main content */}
+          <div style={{ display: "flex", position: "relative" }}>
+            {/* Lane Horizontal Lines */}
+            {Array.from({ length: laneCount + 1 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  position: "absolute",
+                  top: i * LANE_H,
+                  left: 0,
+                  right: 0,
+                  height: 1,
+                  backgroundColor: BORDER,
+                  pointerEvents: "none",
+                }}
+              />
+            ))}
+
+            {/* Lane Labels */}
+            <div style={{
+              width: LABEL_W,
+              borderRight: `1px solid ${BORDER}`,
+              position: "relative",
+            }}>
+              {diagramData.lanes?.map((lane) => {
+                const lines = lane.label.split("\n");
+                return (
+                  <div key={lane.id} style={{
+                    height: LANE_H,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 15px",
+                  }}>
+                    {lines.map((ln, i) => (
+                      <span key={i} style={{
+                        fontSize: 11,
+                        lineHeight: "1.4",
+                        fontWeight: 600,
+                        color: "#374151",
+                        textAlign: "center",
+                        fontFamily: "Inter, Segoe UI, Arial, sans-serif"
+                      }}>{ln}</span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SVG Flow */}
+            <svg width={svgW} height={svgH} style={{ background: "transparent", overflow: "visible" }}>
+              <Defs />
+              {renderArrows(diagramData.flow || [], nodes, svgW)}
+              {allNodes.map(n => {
+                if (n.type === "start") return <StartNode key={n.id} n={n} onDragStart={() => {}} />;
+                if (n.type === "decision") return <DiamondNode key={n.id} n={n} onDragStart={() => {}} />;
+                return (
+                  <ProcessNode
+                    key={n.id}
+                    n={n}
+                    isOpen={false}
+                    toggleAgent={() => {}}
+                    onDragStart={() => {}}
+                  />
+                );
+              })}
+            </svg>
+          </div>
         </div>
       </div>
     );

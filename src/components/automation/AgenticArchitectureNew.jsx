@@ -26,7 +26,7 @@ import {
 
 const STEP_DELAY = 650;
 
-export default function SapValidationWorkflow({ suggestionId, stepKey, analysisId, onComplete }) {
+export default function SapValidationWorkflow({ suggestionId, stepKey, analysisId, onComplete, forPdf = false }) {
   const [workflow, setWorkflow] = useState(null);
   const [layers, setLayers] = useState([]);
   const [nodeMeta, setNodeMeta] = useState({});
@@ -313,6 +313,93 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Box className="w-8 h-8 opacity-20" />
           <p className="text-sm font-medium">No architecture data available for this suggestion.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PDF static render: just the SVG canvas at full natural size ──
+  if (forPdf) {
+    return (
+      <div
+        style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
+        className="w-full bg-white relative flex flex-col p-6"
+      >
+        <div className="relative rounded-2xl border border-slate-200 bg-white/70 overflow-visible shadow-2xl">
+          <svg
+            viewBox={`0 0 ${CANVAS_W} ${canvasHeight}`}
+            className="w-full"
+            style={{ height: "auto", minHeight: 600 }}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <pattern id="sap-dots-pdf" width="28" height="28" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="#cbd5e1" />
+              </pattern>
+              {Object.entries(EDGE_STYLES).map(([key, s]) => (
+                <marker
+                  key={key}
+                  id={`arrow-pdf-${key.replace(/\s/g, "-")}`}
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="5"
+                  markerHeight="5"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill={s.color} />
+                </marker>
+              ))}
+            </defs>
+            <rect width="100%" height="100%" fill="url(#sap-dots-pdf)" opacity="0.5" />
+
+            {/* Lane Backgrounds */}
+            {laneBounds.map((lane) => (
+              <ArchitectureLane key={lane.id} lane={lane} canvasWidth={CANVAS_W} />
+            ))}
+
+            {/* Edges */}
+            {edgePaths.map((edge) => {
+              const baseColor = edge.style.color;
+              const markerKey = `arrow-pdf-${(edge.label || "sync API").replace(/\s/g, "-")}`;
+              return (
+                <g key={edge.id}>
+                  <path
+                    d={edge.d}
+                    fill="none"
+                    stroke={baseColor}
+                    strokeWidth={1.8}
+                    strokeDasharray={edge.style.dashed ? "5 4" : "none"}
+                    strokeOpacity={0.8}
+                    markerEnd={`url(#${markerKey})`}
+                  />
+                </g>
+              );
+            })}
+
+            {/* Nodes */}
+            {workflow.nodes.map((node) => {
+              const pos = positions[node.id];
+              if (!pos) return null;
+              const Icon = nodeMeta[node.id]?.icon || Server;
+              const lane = layers[pos.laneIdx];
+              return (
+                <ArchitectureNode
+                  key={node.id}
+                  node={node}
+                  pos={pos}
+                  icon={Icon}
+                  accentColor={lane.accent || "#10b981"}
+                  isActive={false}
+                  isDone={false}
+                  isHovered={false}
+                  setHoveredNode={() => {}}
+                  nodeWidth={NODE_W}
+                  nodeHeight={NODE_H}
+                />
+              );
+            })}
+          </svg>
         </div>
       </div>
     );

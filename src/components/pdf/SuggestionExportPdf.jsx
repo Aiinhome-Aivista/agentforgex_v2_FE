@@ -1,6 +1,4 @@
-import React, { useRef, useState } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Download, Loader2 } from "lucide-react";
 import SwimlaneDiagram from '../automation/AgenticWorkflowDiagramNew';
 import SapValidationWorkflow from '../automation/AgenticArchitectureNew';
@@ -8,89 +6,142 @@ import { PDFProvider } from "../../context/PdfContext";
 
 export default function SuggestionExportPdf({ suggestion, processData }) {
   const [isExporting, setIsExporting] = useState(false);
-  const pdfRef = useRef();
+  const printContainerRef = useRef();
+  const printStyleRef = useRef(null);
 
-  const handleDownload = async () => {
-    setIsExporting(true);
-    try {
-      const element = pdfRef.current;
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - (2 * margin);
-      const usableHeightMm = pageHeight - (2 * margin);
-
-      // Wait for components to fully render and animate
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const atoms = element.querySelectorAll('.pdf-atomic');
-      if (atoms.length === 0) return;
-
-      let currentYMm = margin;
-      let isFirstPage = true;
-
-      for (let i = 0; i < atoms.length; i++) {
-        const atom = atoms[i];
-
-        const canvas = await html2canvas(atom, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-        });
-
-        const atomWidthPx = canvas.width;
-        const atomHeightPx = canvas.height;
-        const pxPerMm = atomWidthPx / contentWidth;
-        const atomHeightMm = atomHeightPx / pxPerMm;
-
-        const remainingSpaceMm = pageHeight - margin - currentYMm;
-
-        if (!isFirstPage && (atomHeightMm > remainingSpaceMm - 10)) {
-          pdf.addPage();
-          currentYMm = margin;
-        }
-
-        if (atomHeightMm > usableHeightMm) {
-          let yOffsetPx = 0;
-          while (yOffsetPx < atomHeightPx) {
-            if (yOffsetPx > 0) {
-              pdf.addPage();
-              currentYMm = margin;
-            }
-
-            const sliceHeightPx = Math.min(usableHeightMm * pxPerMm, atomHeightPx - yOffsetPx);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = atomWidthPx;
-            sliceCanvas.height = sliceHeightPx;
-            const ctx = sliceCanvas.getContext('2d');
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            ctx.drawImage(canvas, 0, yOffsetPx, atomWidthPx, sliceHeightPx, 0, 0, atomWidthPx, sliceHeightPx);
-
-            const sliceImgData = sliceCanvas.toDataURL("image/png");
-            pdf.addImage(sliceImgData, "PNG", margin, currentYMm, contentWidth, sliceHeightPx / pxPerMm);
-
-            yOffsetPx += (usableHeightMm * pxPerMm);
-            currentYMm += (sliceHeightPx / pxPerMm);
-          }
-        } else {
-          const imgData = canvas.toDataURL("image/png");
-          pdf.addImage(imgData, "PNG", margin, currentYMm, contentWidth, atomHeightMm);
-          currentYMm += atomHeightMm + 5;
-        }
-
-        isFirstPage = false;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (printStyleRef.current) {
+        printStyleRef.current.remove();
+        printStyleRef.current = null;
       }
+      document.body.classList.remove('suggestion-pdf-printing');
+    };
+  }, []);
 
-      pdf.save(`${suggestion?.title?.replace(/\s+/g, "_") || "Suggestion"}_Report.pdf`);
+  const handleDownload = useCallback(async () => {
+    setIsExporting(true);
+
+    try {
+      // Inject print-specific stylesheet that hides everything except our print content
+      const style = document.createElement('style');
+      style.id = 'suggestion-pdf-print-styles';
+      style.textContent = `
+        @media print {
+          /* Hide EVERYTHING on the page */
+          body.suggestion-pdf-printing > * {
+            display: none !important;
+          }
+
+          /* Show ONLY the print overlay */
+          body.suggestion-pdf-printing > .suggestion-pdf-print-overlay {
+            display: block !important;
+            position: static !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+            pointer-events: auto !important;
+            width: 100% !important;
+          }
+
+          body.suggestion-pdf-printing .pdf-print-inner {
+            width: 100% !important;
+            padding: 0 !important;
+          }
+
+          /* Ensure colors print correctly */
+          body.suggestion-pdf-printing {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background: white !important;
+            color: black !important;
+          }
+
+          /* Page settings */
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          /* Avoid breaks inside sections */
+          body.suggestion-pdf-printing .pdf-print-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin-bottom: 20px;
+          }
+
+          /* Force page break between major sections */
+          body.suggestion-pdf-printing .pdf-print-page-break {
+            page-break-before: always;
+            break-before: always;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      printStyleRef.current = style;
+
+      // Mark body for print isolation
+      document.body.classList.add('suggestion-pdf-printing');
+
+      // Move the hidden print container to body level so the CSS selector works
+      const printContainer = printContainerRef.current;
+      const originalParent = printContainer.parentElement;
+      const originalNextSibling = printContainer.nextSibling;
+      document.body.appendChild(printContainer);
+      printContainer.classList.add('suggestion-pdf-print-overlay');
+
+      // Wait for diagrams to fully render (data fetch + layout)
+      await new Promise(resolve => setTimeout(resolve, 4000));
+
+      // Listen for print completion
+      const cleanup = () => {
+        document.body.classList.remove('suggestion-pdf-printing');
+        printContainer.classList.remove('suggestion-pdf-print-overlay');
+        
+        // Move container back to its original position
+        if (originalNextSibling) {
+          originalParent.insertBefore(printContainer, originalNextSibling);
+        } else {
+          originalParent.appendChild(printContainer);
+        }
+
+        // Remove print styles
+        if (printStyleRef.current) {
+          printStyleRef.current.remove();
+          printStyleRef.current = null;
+        }
+
+        setIsExporting(false);
+      };
+
+      const afterPrintHandler = () => {
+        window.removeEventListener('afterprint', afterPrintHandler);
+        cleanup();
+      };
+      window.addEventListener('afterprint', afterPrintHandler);
+
+      // Trigger native browser print (Chrome shows "Save as PDF")
+      window.print();
+
+      // Fallback cleanup if afterprint doesn't fire (some browsers)
+      setTimeout(() => {
+        if (isExporting) {
+          window.removeEventListener('afterprint', afterPrintHandler);
+          cleanup();
+        }
+      }, 60000);
+
     } catch (error) {
       console.error("PDF Export failed:", error);
-    } finally {
+      document.body.classList.remove('suggestion-pdf-printing');
+      if (printStyleRef.current) {
+        printStyleRef.current.remove();
+        printStyleRef.current = null;
+      }
       setIsExporting(false);
     }
-  };
+  }, [isExporting]);
 
   const suggestionId = suggestion?.id || suggestion?._key;
   const analysisId = suggestion?.analysisId || processData?.process?._key || processData?.process?.id;
@@ -106,75 +157,81 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
         {isExporting ? (
           <>
             <Loader2 size={18} className="animate-spin text-black" />
-            <span className="text-black font-semibold text-sm">Exporting...</span>
+            <span className="text-black font-semibold text-sm">Preparing...</span>
           </>
         ) : (
           <>
             <Download size={18} className="text-black" />
-        
           </>
         )}
       </button>
 
-      {/* Hidden container for PDF rendering */}
+      {/* Hidden container — rendered off-screen, moved to body during print */}
       <div
+        ref={printContainerRef}
         style={{
           position: "fixed",
-          zIndex: -100,
+          zIndex: -9999,
           top: 0,
-          left: "-2000px",
+          left: "-9999px",
           pointerEvents: "none",
-          background: "#fff"
+          background: "#fff",
+          width: "100%",
         }}
       >
         <div
-          ref={pdfRef}
-          className="pdf-report"
+          className="pdf-print-inner"
           style={{
-            width: "800px",
-            padding: "40px",
+            width: "100%",
+            padding: "30px",
+            background: "#ffffff",
+            fontFamily: "'Inter', system-ui, sans-serif",
           }}
         >
           <PDFProvider value={true}>
-            <div className="flex flex-col text-left">
-              {/* HEADER */}
-              <div className="pdf-atomic py-10 px-10">
-                <p className="text-brand-600 font-black text-xs uppercase tracking-[0.4em] mb-4">Suggestion Report</p>
-                <h1 className="text-4xl font-black text-gray-900 leading-[1.1] tracking-tight mb-4">
+            <div style={{ display: "flex", flexDirection: "column", textAlign: "left", color: "#111" }}>
+              
+              {/* HEADER SECTION */}
+              <div className="pdf-print-section" style={{ marginBottom: 30 }}>
+                <p style={{ color: "#10b981", fontWeight: 900, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3em", marginBottom: 12 }}>
+                  Suggestion Report
+                </p>
+                <h1 style={{ fontSize: 28, fontWeight: 900, color: "#111", lineHeight: 1.1, marginBottom: 12 }}>
                   {suggestion?.title || "Automation Suggestion"}
                 </h1>
-                <p className="text-lg text-gray-600 font-semibold mb-6">
+                <p style={{ fontSize: 15, color: "#6b7280", fontWeight: 600, marginBottom: 20 }}>
                   {suggestion?.description}
                 </p>
-                <div className="flex gap-4 mb-4">
-                  <div className="bg-brand-50 px-4 py-2 rounded-lg">
-                    <span className="text-xs text-brand-600 uppercase font-bold tracking-wider block">Automation Type</span>
-                    <span className="text-lg font-black text-gray-900">{suggestion?.agent_type?.replace('_', ' ') || 'N/A'}</span>
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div style={{ background: "#f0fdf4", padding: "8px 16px", borderRadius: 8 }}>
+                    <span style={{ fontSize: 10, color: "#10b981", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em", display: "block" }}>Automation Type</span>
+                    <span style={{ fontSize: 16, fontWeight: 900, color: "#111" }}>{suggestion?.agent_type?.replace('_', ' ') || 'N/A'}</span>
                   </div>
-                  <div className="bg-brand-50 px-4 py-2 rounded-lg">
-                    <span className="text-xs text-brand-600 uppercase font-bold tracking-wider block">Complexity</span>
-                    <span className="text-lg font-black text-gray-900">{suggestion?.complexity || 'N/A'}</span>
+                  <div style={{ background: "#f0fdf4", padding: "8px 16px", borderRadius: 8 }}>
+                    <span style={{ fontSize: 10, color: "#10b981", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.1em", display: "block" }}>Complexity</span>
+                    <span style={{ fontSize: 16, fontWeight: 900, color: "#111" }}>{suggestion?.complexity || 'N/A'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* GRAPH 1 */}
-              <div className="pdf-atomic px-10 mb-10">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Process Workflow</h2>
-                <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                  {suggestionId && <SwimlaneDiagram suggestionId={suggestionId} />}
+              {/* PROCESS WORKFLOW — fully zoomed out */}
+              <div className="pdf-print-section pdf-print-page-break">
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 16 }}>Process Workflow</h2>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "visible", background: "#fff" }}>
+                  {suggestionId && <SwimlaneDiagram suggestionId={suggestionId} forPdf={true} />}
                 </div>
               </div>
 
-              {/* GRAPH 2 */}
-              <div className="pdf-atomic px-10 mb-10">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Agent Architecture</h2>
-                <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+              {/* AGENT ARCHITECTURE — fully zoomed out */}
+              <div className="pdf-print-section pdf-print-page-break">
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 16 }}>Agent Architecture</h2>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "visible", background: "#fff" }}>
                   {suggestionId && (
                     <SapValidationWorkflow 
                       suggestionId={suggestionId}
                       stepKey={suggestion?.step_key}
                       analysisId={analysisId}
+                      forPdf={true}
                     />
                   )}
                 </div>
