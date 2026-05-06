@@ -1,10 +1,20 @@
 import React from "react";
-import { RotateCcw, Play } from "lucide-react";
+import { RotateCcw, Play, Download, Loader2 } from "lucide-react";
 
-export function ArchitectureHeader({ isRunning, activeNodes, completedNodes, onReset, onRun }) {
+export function ArchitectureHeader({ isRunning, activeNodes, completedNodes, onReset, onRun, onDownload, isDownloading }) {
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-4">
+    <header className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-4" data-html2canvas-ignore>
       <div className="flex items-center gap-3">
+        {onDownload && (
+          <button
+            onClick={onDownload}
+            disabled={isDownloading}
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-md border border-slate-400 bg-white hover:bg-slate-50 transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed text-sm font-semibold text-slate-600"
+          >
+            {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Download
+          </button>
+        )}
         <button
           onClick={onReset}
           disabled={!isRunning && activeNodes.size === 0 && completedNodes.size === 0}

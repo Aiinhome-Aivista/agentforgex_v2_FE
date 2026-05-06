@@ -245,8 +245,9 @@ export function ArchitectureNode({
       onMouseLeave={() => setHoveredNode(null)}
       style={{ cursor: "pointer", transition: "all 0.3s ease" }}
     >
-      <foreignObject width={nodeWidth} height={nodeHeight} className="overflow-visible">
+      <foreignObject width={nodeWidth} height={nodeHeight} className="overflow-visible" xmlns="http://www.w3.org/2000/svg">
         <div
+          xmlns="http://www.w3.org/1999/xhtml"
           className={`w-full h-full border-2 rounded-2xl flex items-center p-3 relative transition-all duration-500 bg-white ${isActive
             ? "shadow-[0_20px_40px_-12px_rgba(0,0,0,0.25)] scale-[1.03]"
             : isHovered
@@ -254,6 +255,7 @@ export function ArchitectureNode({
               : "shadow-md"
             }`}
           style={{
+            fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
             backgroundColor: isActive ? "#f0fdf4" : "white",
             borderColor: isActive
               ? "#22c55e"
@@ -278,10 +280,11 @@ export function ArchitectureNode({
           </div>
 
           {/* Text Content */}
-          <div className="flex flex-col flex-1 min-w-0 pr-1">
+          <div className="flex flex-col flex-1 pr-1">
             <span
-              className={`font-bold text-[13px] leading-tight line-clamp-2 ${isActive ? "text-slate-900" : "text-slate-800"
+              className={`font-bold text-[13px] leading-tight ${isActive ? "text-slate-900" : "text-slate-800"
                 }`}
+              style={{ display: "block", wordBreak: "break-word" }}
             >
               {node.data.label}
             </span>
