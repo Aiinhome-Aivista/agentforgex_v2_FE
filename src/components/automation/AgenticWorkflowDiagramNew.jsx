@@ -39,7 +39,7 @@ export default function SwimlaneDiagram({ data: propData, suggestionId }) {
   const [nodes, setNodes] = useState(() => buildNodeMap(diagramData));
   const [loading, setLoading] = useState(false);
   const lastFetchedId = useRef(null);
-  const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
+  const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Sync internal data when propData changes
@@ -107,7 +107,7 @@ export default function SwimlaneDiagram({ data: propData, suggestionId }) {
   };
 
   const handleReset = () => {
-    setViewport({ x: 0, y: 0, zoom: 1 });
+    setViewport({ x: 0, y: 50, zoom: 0.6 });
     setNodes(buildNodeMap(diagramData));
     setAgentOffsets({});
   };
