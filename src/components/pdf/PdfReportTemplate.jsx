@@ -1,5 +1,8 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { DUMMY_REPORT_DATA } from "../../constants/dummyReportData";
+import SwimlaneDiagram from "../automation/AgenticWorkflowDiagramNew";
+import SapValidationWorkflow from "../automation/AgenticArchitectureNew";
 
 // A4 Dimensions at 96 DPI: 794 x 1123 pixels
 const PAGE_WIDTH = "794px";
@@ -843,6 +846,7 @@ const ContentPage = ({
 //   original outer wrapper structure (w-0 h-0) preserved
 // ──────────────────────────────────────────────────────────────
 export default function PdfReportTemplate({ id = "pdf-report-container" }) {
+  const location = useLocation();
   const { document } = DUMMY_REPORT_DATA;
   const meta = document.metadata;
 
@@ -879,7 +883,29 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
 
   const page5Sections = [document.sections[3], document.sections[4]]; // Sec 4 & 5
 
-  const totalPages = 7; // cover + toc + 5 content pages
+  // Dynamically detect if we're on a suggestion page and pull data for diagrams
+  const pathParts = location.pathname.split('/');
+  const suggestionId = pathParts.includes('suggestion') ? pathParts[pathParts.indexOf('suggestion') + 1] : null;
+  
+  let suggestionContext = null;
+  if (suggestionId) {
+    try {
+      const stored = localStorage.getItem(`suggestion_${suggestionId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        suggestionContext = {
+          suggestionId,
+          analysisId: parsed.analysisId,
+          stepKey: parsed.step_key
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to parse suggestion data from localStorage", e);
+    }
+  }
+
+  const hasSuggestionData = !!(suggestionContext?.suggestionId);
+  const totalPages = hasSuggestionData ? 9 : 7; // cover + toc + 5 content pages [+ 2 diagram pages]
   const chapterFor = (sections) => sections[0]?.title || "";
 
   return (
@@ -951,6 +977,46 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
             <Section key={sec.id} section={sec} />
           ))}
         </ContentPage>
+
+        {hasSuggestionData && (
+          <>
+            <ContentPage
+              chapter="Agentic Process Workflow"
+              pageNum={8}
+              totalPages={totalPages}
+              classification={meta.classification}
+            >
+              <div
+                className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
+                style={{ background: "#f8fafc" }}
+              >
+                <SwimlaneDiagram
+                  suggestionId={suggestionContext.suggestionId}
+                  forPdf={true}
+                />
+              </div>
+            </ContentPage>
+
+            <ContentPage
+              chapter="Agent Architecture"
+              pageNum={9}
+              totalPages={totalPages}
+              classification={meta.classification}
+            >
+              <div
+                className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
+                style={{ background: "#f8fafc" }}
+              >
+                <SapValidationWorkflow
+                  suggestionId={suggestionContext.suggestionId}
+                  stepKey={suggestionContext.stepKey}
+                  analysisId={suggestionContext.analysisId}
+                  forPdf={true}
+                />
+              </div>
+            </ContentPage>
+          </>
+        )}
       </div>
     </div>
   );
