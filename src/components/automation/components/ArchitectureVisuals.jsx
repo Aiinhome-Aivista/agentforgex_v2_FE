@@ -6,7 +6,8 @@ export function ArchitectureCanvas({
   viewBox, 
   height, 
   isRunning, 
-  children 
+  children,
+  instanceId = "default"
 }) {
   return (
     <div className="relative rounded-2xl border border-slate-200 bg-white/70 overflow-hidden shadow-2xl backdrop-blur-md">
@@ -24,14 +25,14 @@ export function ArchitectureCanvas({
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          <pattern id="sap-dots" width="28" height="28" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="1" fill="#cbd5e1" />
-          </pattern>
+            <pattern id={`sap-dots-${instanceId}`} width="28" height="28" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="#cbd5e1" />
+            </pattern>
 
-          {Object.entries(EDGE_STYLES).map(([key, s]) => (
-            <marker
-              key={key}
-              id={`arrow-${key.replace(/\s/g, "-")}`}
+            {Object.entries(EDGE_STYLES).map(([key, s]) => (
+              <marker
+                key={key}
+                id={`arrow-${instanceId}-${key.replace(/\s/g, "-")}`}
               viewBox="0 0 10 10"
               refX="9"
               refY="5"
@@ -44,7 +45,7 @@ export function ArchitectureCanvas({
           ))}
 
           <marker
-            id="arrow-idle"
+            id={`arrow-idle-${instanceId}`}
             viewBox="0 0 10 10"
             refX="9"
             refY="5"
@@ -56,7 +57,7 @@ export function ArchitectureCanvas({
           </marker>
 
           <marker
-            id="arrow-active"
+            id={`arrow-active-${instanceId}`}
             viewBox="0 0 10 10"
             refX="9"
             refY="5"
@@ -67,7 +68,7 @@ export function ArchitectureCanvas({
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
           </marker>
 
-          <filter id="sap-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <filter id={`sap-glow-${instanceId}`} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
@@ -76,7 +77,7 @@ export function ArchitectureCanvas({
           </filter>
         </defs>
 
-        <rect width="100%" height="100%" fill="url(#sap-dots)" opacity="0.5" />
+        <rect width="100%" height="100%" fill={`url(#sap-dots-${instanceId})`} opacity="0.5" />
         {children}
       </svg>
     </div>
@@ -138,7 +139,8 @@ export function ArchitectureEdge({
   activeEdges, 
   completedEdges, 
   hoveredEdge, 
-  setHoveredEdge 
+  setHoveredEdge,
+  instanceId = "default"
 }) {
   const isActive = activeEdges.has(edge.id);
   const isDone = completedEdges.has(edge.id);
@@ -148,8 +150,8 @@ export function ArchitectureEdge({
   const opacity = isActive ? 1 : isDone ? 0.5 : isHovered ? 0.95 : 0.8;
 
   const markerKey = isActive
-    ? "arrow-active"
-    : `arrow-${(edge.label || "sync API").replace(/\s/g, "-")}`;
+    ? `arrow-active-${instanceId}`
+    : `arrow-${instanceId}-${(edge.label || "sync API").replace(/\s/g, "-")}`;
 
   return (
     <g
@@ -169,7 +171,7 @@ export function ArchitectureEdge({
         strokeDasharray={edge.style.dashed ? "5 4" : "none"}
         strokeOpacity={opacity}
         markerEnd={`url(#${markerKey})`}
-        filter={isActive ? "url(#sap-glow)" : undefined}
+        filter={isActive ? `url(#sap-glow-${instanceId})` : undefined}
         style={{
           transition: "stroke 0.35s ease, stroke-opacity 0.2s ease, stroke-width 0.2s ease",
         }}

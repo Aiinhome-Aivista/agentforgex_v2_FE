@@ -1,23 +1,28 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { ZoomIn, ZoomOut, Maximize, Maximize2, Minimize2, RefreshCw, Loader2 } from "lucide-react";
+import React, { useState, useRef, useCallback, useEffect, useId } from "react";
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { getProcessFlow } from "../../services/api";
-import { 
-  TITLE_W, 
-  LABEL_W, 
-  LANE_H, 
-  NODE_W, 
-  buildNodeMap 
+import {
+  TITLE_W,
+  LABEL_W,
+  LANE_H,
+  NODE_W,
+  buildNodeMap,
 } from "./utils/workflowUtils";
-import { 
-  ProcessNode, 
-  StartNode, 
-  DiamondNode, 
-  AgentNode 
+import {
+  ProcessNode,
+  StartNode,
+  DiamondNode,
+  AgentNode,
 } from "./components/WorkflowNodes";
-import { 
-  Defs, 
-  renderArrows 
-} from "./components/WorkflowEdges";
+import { Defs, renderArrows } from "./components/WorkflowEdges";
 
 /* ═══════════════════════════════════════════════════════════
    SAMPLE JSON  — replace with your real API/backend call
@@ -25,7 +30,7 @@ import {
 export const sampleDiagramData = {
   title: "Process Flow Diagram",
   lanes: [],
-  flow: []
+  flow: [],
 };
 
 const BORDER = "#000000";
@@ -34,13 +39,18 @@ const WHITE = "#ffffff";
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════ */
-export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf = false }) {
+export default function SwimlaneDiagram({
+  data: propData,
+  suggestionId,
+  forPdf = false,
+}) {
   const [diagramData, setDiagramData] = useState(propData || sampleDiagramData);
   const [nodes, setNodes] = useState(() => buildNodeMap(diagramData));
   const [loading, setLoading] = useState(false);
   const lastFetchedId = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const markerId = useId().replace(/:/g, "");
 
   // Sync internal data when propData changes
   useEffect(() => {
@@ -55,11 +65,11 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
     setLoading(true);
     lastFetchedId.current = suggestionId;
     getProcessFlow(suggestionId)
-      .then(res => {
+      .then((res) => {
         setDiagramData(res);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("SwimlaneDiagram Error:", err);
         setLoading(false);
         lastFetchedId.current = null; // Allow retry
@@ -85,12 +95,15 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   const svgH = laneCount * LANE_H;
 
   // Calculate width of the flow content (SVG)
-  const rightmost = allNodes.length > 0 ? Math.max(...allNodes.map(n => n.cx + NODE_W / 2)) : 500;
+  const rightmost =
+    allNodes.length > 0
+      ? Math.max(...allNodes.map((n) => n.cx + NODE_W / 2))
+      : 500;
   const svgW = rightmost + 300;
 
   // --- Visibility Logic ---
   const toggleAgent = useCallback((id) => {
-    setOpenAgentIds(prev => {
+    setOpenAgentIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -100,9 +113,9 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
 
   // --- Viewport & Drag Logic ---
   const handleZoom = (factor) => {
-    setViewport(prev => ({
+    setViewport((prev) => ({
       ...prev,
-      zoom: Math.min(Math.max(prev.zoom * factor, 0.4), 3)
+      zoom: Math.min(Math.max(prev.zoom * factor, 0.4), 3),
     }));
   };
 
@@ -113,10 +126,14 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   };
 
   const onMouseDown = (e) => {
-    if (e.target.closest('button')) return;
+    if (e.target.closest("button")) return;
 
-    const agentId = e.target.closest('.agent-group')?.getAttribute('data-agent-id');
-    const nodeId = e.target.closest('.node-group')?.getAttribute('data-node-id');
+    const agentId = e.target
+      .closest(".agent-group")
+      ?.getAttribute("data-agent-id");
+    const nodeId = e.target
+      .closest(".node-group")
+      ?.getAttribute("data-node-id");
 
     if (agentId) {
       setDraggingAgentId(agentId);
@@ -133,32 +150,32 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
     const dy = e.clientY - dragStart.y;
 
     if (draggingAgentId) {
-      setAgentOffsets(prev => {
+      setAgentOffsets((prev) => {
         const current = prev[draggingAgentId] || { x: NODE_W / 2 + 50, y: -85 };
         return {
           ...prev,
           [draggingAgentId]: {
             x: current.x + dx / viewport.zoom,
-            y: current.y + dy / viewport.zoom
-          }
+            y: current.y + dy / viewport.zoom,
+          },
         };
       });
       setDragStart({ x: e.clientX, y: e.clientY });
     } else if (draggingNodeId) {
-      setNodes(prev => ({
+      setNodes((prev) => ({
         ...prev,
         [draggingNodeId]: {
           ...prev[draggingNodeId],
           cx: prev[draggingNodeId].cx + dx / viewport.zoom,
-          cy: prev[draggingNodeId].cy + dy / viewport.zoom
-        }
+          cy: prev[draggingNodeId].cy + dy / viewport.zoom,
+        },
       }));
       setDragStart({ x: e.clientX, y: e.clientY });
     } else if (isPanning) {
-      setViewport(prev => ({
+      setViewport((prev) => ({
         ...prev,
         x: prev.x + dx,
-        y: prev.y + dy
+        y: prev.y + dy,
       }));
       setDragStart({ x: e.clientX, y: e.clientY });
     }
@@ -174,7 +191,7 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => {
+      containerRef.current.requestFullscreen().catch((err) => {
         console.error(`Error attempting to enable fullscreen: ${err.message}`);
       });
     } else {
@@ -183,17 +200,23 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   }, []);
 
   useEffect(() => {
-    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    const handleFullscreenChange = () =>
+      setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   if (loading) {
     return (
-      <div className={`w-full border border-slate-200 rounded-3xl flex items-center justify-center bg-slate-50 transition-all duration-300 ${isFullscreen ? 'h-screen' : 'h-[600px]'}`}>
+      <div
+        className={`w-full border border-slate-200 rounded-3xl flex items-center justify-center bg-slate-50 transition-all duration-300 ${isFullscreen ? "h-screen" : "h-[600px]"}`}
+      >
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-          <p className="text-sm font-medium text-slate-500 tracking-tight">Loading automation workflow...</p>
+          <p className="text-sm font-medium text-slate-500 tracking-tight">
+            Loading automation workflow...
+          </p>
         </div>
       </div>
     );
@@ -203,7 +226,10 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
   if (forPdf) {
     const totalW = TITLE_W + LABEL_W + svgW;
     return (
-      <div className="w-full" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+      <div
+        className="w-full"
+        style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
+      >
         <div
           style={{
             display: "flex",
@@ -217,22 +243,24 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
           }}
         >
           {/* Title Column */}
-          <div style={{
-            width: TITLE_W,
-            background: WHITE,
-            borderRight: `1px solid ${BORDER}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            writingMode: "vertical-rl",
-            fontWeight: 700,
-            fontSize: 11,
-            color: "#111",
-            letterSpacing: "0.05em",
-            minHeight: "100%",
-            padding: "20px 0",
-            textTransform: "capitalize",
-          }}>
+          <div
+            style={{
+              width: TITLE_W,
+              background: WHITE,
+              borderRight: `1px solid ${BORDER}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              writingMode: "vertical-rl",
+              fontWeight: 700,
+              fontSize: 11,
+              color: "#111",
+              letterSpacing: "0.05em",
+              minHeight: "100%",
+              padding: "20px 0",
+              textTransform: "capitalize",
+            }}
+          >
             {diagramData.title}
           </div>
 
@@ -255,31 +283,41 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
             ))}
 
             {/* Lane Labels */}
-            <div style={{
-              width: LABEL_W,
-              borderRight: `1px solid ${BORDER}`,
-              position: "relative",
-            }}>
+            <div
+              style={{
+                width: LABEL_W,
+                borderRight: `1px solid ${BORDER}`,
+                position: "relative",
+              }}
+            >
               {diagramData.lanes?.map((lane) => {
                 const lines = lane.label.split("\n");
                 return (
-                  <div key={lane.id} style={{
-                    height: LANE_H,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0 15px",
-                  }}>
+                  <div
+                    key={lane.id}
+                    style={{
+                      height: LANE_H,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 15px",
+                    }}
+                  >
                     {lines.map((ln, i) => (
-                      <span key={i} style={{
-                        fontSize: 11,
-                        lineHeight: "1.4",
-                        fontWeight: 600,
-                        color: "#374151",
-                        textAlign: "center",
-                        fontFamily: "Inter, Segoe UI, Arial, sans-serif"
-                      }}>{ln}</span>
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: 11,
+                          lineHeight: "1.4",
+                          fontWeight: 600,
+                          color: "#374151",
+                          textAlign: "center",
+                          fontFamily: "Inter, Segoe UI, Arial, sans-serif",
+                        }}
+                      >
+                        {ln}
+                      </span>
                     ))}
                   </div>
                 );
@@ -287,12 +325,20 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
             </div>
 
             {/* SVG Flow */}
-            <svg width={svgW} height={svgH} style={{ background: "transparent", overflow: "visible" }}>
-              <Defs />
-              {renderArrows(diagramData.flow || [], nodes, svgW)}
-              {allNodes.map(n => {
-                if (n.type === "start") return <StartNode key={n.id} n={n} onDragStart={() => {}} />;
-                if (n.type === "decision") return <DiamondNode key={n.id} n={n} onDragStart={() => {}} />;
+            <svg
+              width={svgW}
+              height={svgH}
+              style={{ background: "transparent", overflow: "visible" }}
+            >
+              <Defs markerId={markerId} />
+              {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
+              {allNodes.map((n) => {
+                if (n.type === "start")
+                  return <StartNode key={n.id} n={n} onDragStart={() => {}} />;
+                if (n.type === "decision")
+                  return (
+                    <DiamondNode key={n.id} n={n} onDragStart={() => {}} />
+                  );
                 return (
                   <ProcessNode
                     key={n.id}
@@ -312,7 +358,6 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
 
   return (
     <div className="w-full">
-      {/* ── Outer card ── */}
       <div
         ref={containerRef}
         style={{
@@ -322,12 +367,17 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
           background: WHITE,
           border: isFullscreen ? "none" : `1px solid ${BORDER}`,
           borderRadius: isFullscreen ? 0 : 8,
-          boxShadow: isFullscreen ? "none" : "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)",
+          boxShadow: isFullscreen
+            ? "none"
+            : "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)",
           overflow: "hidden",
           position: "relative",
-          cursor: (isPanning || draggingNodeId || draggingAgentId) ? "grabbing" : "grab",
+          cursor:
+            isPanning || draggingNodeId || draggingAgentId
+              ? "grabbing"
+              : "grab",
           transition: "height 0.3s ease",
-          userSelect: "none"
+          userSelect: "none",
         }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -344,15 +394,23 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
             zIndex: 100,
             display: "flex",
             flexDirection: "column",
-            gap: 8
+            gap: 8,
           }}
-          onMouseDown={e => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {[
             { icon: ZoomIn, onClick: () => handleZoom(1.15), title: "Zoom In" },
-            { icon: ZoomOut, onClick: () => handleZoom(0.85), title: "Zoom Out" },
+            {
+              icon: ZoomOut,
+              onClick: () => handleZoom(0.85),
+              title: "Zoom Out",
+            },
             { icon: RefreshCw, onClick: handleReset, title: "Reset View" },
-            { icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen, title: isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen" }
+            {
+              icon: isFullscreen ? Minimize2 : Maximize2,
+              onClick: toggleFullscreen,
+              title: isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen",
+            },
           ].map((btn, i) => (
             <button
               key={i}
@@ -367,36 +425,39 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
         </div>
 
         {/* ── Title Column (Far Left) ── */}
-        <div style={{
-          width: TITLE_W,
-          background: WHITE,
-          borderRight: `1px solid ${BORDER}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          writingMode: "vertical-rl",
-          fontWeight: 700,
-          fontSize: 11,
-          color: "#111",
-          letterSpacing: "0.05em",
-          minHeight: "100%",
-          padding: "20px 0",
-          textTransform: "capitalize",
-          zIndex: 10,
-          position: "relative"
-        }}>
+        <div
+          style={{
+            width: TITLE_W,
+            background: WHITE,
+            borderRight: `1px solid ${BORDER}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            writingMode: "vertical-rl",
+            fontWeight: 700,
+            fontSize: 11,
+            color: "#111",
+            letterSpacing: "0.05em",
+            minHeight: "100%",
+            padding: "20px 0",
+            textTransform: "capitalize",
+            zIndex: 10,
+            position: "relative",
+          }}
+        >
           {diagramData.title}
         </div>
 
         {/* ── Main content area (Labels + Flow) ── */}
-        <div style={{
-          flex: 1,
-          position: "relative",
-          display: "flex",
-          background: WHITE,
-          overflow: "hidden"
-        }}>
-
+        <div
+          style={{
+            flex: 1,
+            position: "relative",
+            display: "flex",
+            background: WHITE,
+            overflow: "hidden",
+          }}
+        >
           <div
             style={{
               position: "absolute",
@@ -406,7 +467,10 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
               height: "100%",
               transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
               transformOrigin: "0 0",
-              transition: (isPanning || draggingNodeId || draggingAgentId) ? "none" : "transform 0.1s ease-out"
+              transition:
+                isPanning || draggingNodeId || draggingAgentId
+                  ? "none"
+                  : "transform 0.1s ease-out",
             }}
           >
             {/* Dynamic Lane Horizontal Lines */}
@@ -421,39 +485,49 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
                   height: 1,
                   backgroundColor: BORDER,
                   pointerEvents: "none",
-                  opacity: 1
+                  opacity: 1,
                 }}
               />
             ))}
 
             <div style={{ display: "flex" }}>
               {/* ── Lane Labels Column ── */}
-              <div style={{
-                width: LABEL_W,
-                borderRight: `1px solid ${BORDER}`,
-                position: "relative",
-                background: "transparent",
-              }}>
+              <div
+                style={{
+                  width: LABEL_W,
+                  borderRight: `1px solid ${BORDER}`,
+                  position: "relative",
+                  background: "transparent",
+                }}
+              >
                 {diagramData.lanes?.map((lane) => {
                   const lines = lane.label.split("\n");
                   return (
-                    <div key={lane.id} style={{
-                      height: LANE_H,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0 15px",
-                    }}>
+                    <div
+                      key={lane.id}
+                      style={{
+                        height: LANE_H,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 15px",
+                      }}
+                    >
                       {lines.map((ln, i) => (
-                        <span key={i} style={{
-                          fontSize: 11,
-                          lineHeight: "1.4",
-                          fontWeight: 600,
-                          color: "#374151",
-                          textAlign: "center",
-                          fontFamily: "Inter, Segoe UI, Arial, sans-serif"
-                        }}>{ln}</span>
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: 11,
+                            lineHeight: "1.4",
+                            fontWeight: 600,
+                            color: "#374151",
+                            textAlign: "center",
+                            fontFamily: "Inter, Segoe UI, Arial, sans-serif",
+                          }}
+                        >
+                          {ln}
+                        </span>
                       ))}
                     </div>
                   );
@@ -461,14 +535,24 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
               </div>
 
               {/* ── SVG Flow Area ── */}
-              <svg width={svgW} height={svgH} style={{ background: "transparent", overflow: "visible" }}>
-                <Defs />
-                {renderArrows(diagramData.flow || [], nodes, svgW)}
+              <svg
+                width={svgW}
+                height={svgH}
+                style={{ background: "transparent", overflow: "visible" }}
+              >
+                <Defs markerId={markerId} />
+                {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
                 {/* ── Nodes (on top) ── */}
-                {allNodes.map(n => {
+                {allNodes.map((n) => {
                   const isOpen = openAgentIds.has(n.id);
-                  if (n.type === "start") return <StartNode key={n.id} n={n} onDragStart={onMouseDown} />;
-                  if (n.type === "decision") return <DiamondNode key={n.id} n={n} onDragStart={onMouseDown} />;
+                  if (n.type === "start")
+                    return (
+                      <StartNode key={n.id} n={n} onDragStart={onMouseDown} />
+                    );
+                  if (n.type === "decision")
+                    return (
+                      <DiamondNode key={n.id} n={n} onDragStart={onMouseDown} />
+                    );
                   return (
                     <ProcessNode
                       key={n.id}
@@ -481,7 +565,7 @@ export default function SwimlaneDiagram({ data: propData, suggestionId, forPdf =
                 })}
 
                 {/* ── Agent Overlays ── */}
-                {Array.from(openAgentIds).map(id => {
+                {Array.from(openAgentIds).map((id) => {
                   const n = nodes[id];
                   if (!n) return null;
                   return (

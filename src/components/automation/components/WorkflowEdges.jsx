@@ -8,10 +8,10 @@ import {
   shorten 
 } from "../utils/workflowUtils";
 
-export function Defs() {
+export function Defs({ markerId = MARKER_ID }) {
   return (
     <defs>
-      <marker id={MARKER_ID} viewBox="0 0 10 10" refX="9" refY="5"
+      <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5"
         markerWidth="7" markerHeight="7" orient="auto">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#444" />
       </marker>
@@ -19,14 +19,14 @@ export function Defs() {
   );
 }
 
-export function Seg({ x1, y1, x2, y2, label }) {
+export function Seg({ x1, y1, x2, y2, label, markerId = MARKER_ID }) {
   const mx = (x1 + x2) / 2;
   const my = (y1 + y2) / 2;
   return (
     <g>
       <line x1={x1} y1={y1} x2={x2} y2={y2}
         stroke="#444" strokeWidth={1.4}
-        markerEnd={`url(#${MARKER_ID})`} fill="none" />
+        markerEnd={`url(#${markerId})`} fill="none" />
       {label && (
         <g transform={`translate(${mx}, ${my})`}>
           <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" />
@@ -40,14 +40,14 @@ export function Seg({ x1, y1, x2, y2, label }) {
   );
 }
 
-export function Elbow({ pts, label }) {
+export function Elbow({ pts, label, markerId = MARKER_ID }) {
   const d = "M " + pts.map(([x, y]) => `${x},${y}`).join(" L ");
   // Approximate midpoint for label
   const mid = pts[Math.floor(pts.length / 2)];
   return (
     <g>
       <path d={d} fill="none" stroke="#444" strokeWidth={1.4}
-        markerEnd={`url(#${MARKER_ID})`} />
+        markerEnd={`url(#${markerId})`} />
       {label && mid && (
         <g transform={`translate(${mid[0]}, ${mid[1]})`}>
           <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" />
@@ -61,7 +61,7 @@ export function Elbow({ pts, label }) {
   );
 }
 
-export function renderArrows(flow, nm, svgW) {
+export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
   const OFFSET = 4; // Stop line slightly before border
 
   return flow.map((conn, i) => {
@@ -80,14 +80,14 @@ export function renderArrows(flow, nm, svgW) {
         const tx2 = t.type === "decision" ? t.cx - DIAMOND_S
           : t.cx - NODE_W / 2;
         const [sx1, sy1, sx2, sy2] = shorten(x1, f.cy, tx2, t.cy, OFFSET);
-        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} />;
+        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} markerId={markerId} />;
       }
 
       /* straight down (same column, next lane) */
       case "down": {
         const tx2 = t.cx, ty2 = t.cy - NODE_H / 2;
         const [sx1, sy1, sx2, sy2] = shorten(f.cx, f.cy + NODE_H / 2, tx2, ty2, OFFSET);
-        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} />;
+        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} markerId={markerId} />;
       }
 
       /* YES — diagonal from bottom of diamond to top of target */
@@ -97,7 +97,7 @@ export function renderArrows(flow, nm, svgW) {
         const [sx1, sy1, sx2, sy2] = shorten(x1, y1, tx2, ty2, OFFSET);
         return (
           <g key={i}>
-            <Seg x1={sx1} y1={sy1} x2={sx2} y2={sy2} />
+            <Seg x1={sx1} y1={sy1} x2={sx2} y2={sy2} markerId={markerId} />
             <text x={x1 + (tx2 - x1) * 0.3} y={y1 + (ty2 - y1) * 0.3 - 5}
               fontSize={11} fontWeight="bold" fill="#444"
               fontFamily="Segoe UI, Arial, sans-serif">{edgeLabel}</text>
@@ -114,7 +114,7 @@ export function renderArrows(flow, nm, svgW) {
         const [sx1, sy1, sx2, sy2] = shorten(wallX, ty, tx, ty, OFFSET);
         return (
           <g key={i}>
-            <Elbow pts={[[fx, fy], [wallX, fy], [wallX, ty], [sx2, sy2]]} label={edgeLabel} />
+            <Elbow pts={[[fx, fy], [wallX, fy], [wallX, ty], [sx2, sy2]]} label={edgeLabel} markerId={markerId} />
             <text x={fx + 8} y={fy - 6} fontSize={11} fill="#444"
               fontFamily="Segoe UI, Arial, sans-serif">{edgeLabel}</text>
           </g>
@@ -126,7 +126,7 @@ export function renderArrows(flow, nm, svgW) {
         const x1 = f.cx, y1 = f.cy + NODE_H / 2;
         const tx2 = t.cx, ty2 = t.cy - NODE_H / 2;
         const [sx1, sy1, sx2, sy2] = shorten(x1, y1, tx2, ty2, OFFSET);
-        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} />;
+        return <Seg key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} label={edgeLabel} markerId={markerId} />;
       }
 
       default: return null;

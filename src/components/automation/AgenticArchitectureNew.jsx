@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback, useId } from "react";
 import { Loader2, AlertCircle, Box, Server } from "lucide-react";
 import { getAutomationArchitecture, runAutomationArchitecture } from "../../services/api";
 
@@ -47,6 +47,8 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
   const cancelRef = useRef(false);
   const lastFetchedId = useRef(null);
   const logRef = useRef(null);
+  const instanceId = useId().replace(/:/g, "");
+
 
   // Fetch Architecture Data
   useEffect(() => {
@@ -302,13 +304,13 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
             preserveAspectRatio="xMidYMid meet"
           >
             <defs>
-              <pattern id="sap-dots-pdf" width="28" height="28" patternUnits="userSpaceOnUse">
+              <pattern id={`sap-dots-${instanceId}`} width="28" height="28" patternUnits="userSpaceOnUse">
                 <circle cx="1" cy="1" r="1" fill="#cbd5e1" />
               </pattern>
               {Object.entries(EDGE_STYLES).map(([key, s]) => (
                 <marker
                   key={key}
-                  id={`arrow-pdf-${key.replace(/\s/g, "-")}`}
+                  id={`arrow-${instanceId}-${key.replace(/\s/g, "-")}`}
                   viewBox="0 0 10 10"
                   refX="9"
                   refY="5"
@@ -320,7 +322,7 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
                 </marker>
               ))}
             </defs>
-            <rect width="100%" height="100%" fill="url(#sap-dots-pdf)" opacity="0.5" />
+            <rect width="100%" height="100%" fill={`url(#sap-dots-${instanceId})`} opacity="0.5" />
 
             {/* Lane Backgrounds */}
             {laneBounds.map((lane) => (
@@ -330,7 +332,7 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
             {/* Edges */}
             {edgePaths.map((edge) => {
               const baseColor = edge.style.color;
-              const markerKey = `arrow-pdf-${(edge.label || "sync API").replace(/\s/g, "-")}`;
+              const markerKey = `arrow-${instanceId}-${(edge.label || "sync API").replace(/\s/g, "-")}`;
               return (
                 <g key={edge.id}>
                   <path
@@ -393,6 +395,7 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
             viewBox={`0 0 ${CANVAS_W} ${canvasHeight}`}
             height="min(78vh, 820px)"
             isRunning={isRunning}
+            instanceId={instanceId}
           >
             {/* Lane Backgrounds */}
             {laneBounds.map((lane) => (
@@ -408,6 +411,7 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
                 completedEdges={completedEdges}
                 hoveredEdge={hoveredEdge}
                 setHoveredEdge={setHoveredEdge}
+                instanceId={instanceId}
               />
             ))}
 

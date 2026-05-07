@@ -39,8 +39,32 @@ export const analyzeFiles = (files, userInput = '') => {
 export const getProcess = (id) => api.get(`/processes/${id}`)
 export const listProcesses = () => api.get('/processes')
 export const getAutomation = (id) => api.get(`/processes/${id}/automation`)
-export const getProcessFlow = (id) => api.get(`/processes/${id}/flow`)
-export const getAutomationArchitecture = (id) => api.get(`/suggestions/${id}/architecture`)
+// In-memory promise caches — caching the Promise itself (not just the resolved
+// data) guarantees that concurrent callers (UI + hidden PDF component that mount
+// at the same time) share the exact same in-flight request and therefore receive
+// identical data.  On error the cache entry is evicted so retries work normally.
+const flowCache = new Map()
+const archCache = new Map()
+
+export const getProcessFlow = (id) => {
+  if (flowCache.has(id)) return flowCache.get(id)
+  const promise = api.get(`/processes/${id}/flow`).catch(err => {
+    flowCache.delete(id)
+    throw err
+  })
+  flowCache.set(id, promise)
+  return promise
+}
+
+export const getAutomationArchitecture = (id) => {
+  if (archCache.has(id)) return archCache.get(id)
+  const promise = api.get(`/suggestions/${id}/architecture`).catch(err => {
+    archCache.delete(id)
+    throw err
+  })
+  archCache.set(id, promise)
+  return promise
+}
 export const runAutomationArchitecture = (data) => api.post(`/agent/run`, data)
 
 export const loginUser = (email, password) =>
