@@ -2,9 +2,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Zap, BookOpen, LayoutTemplate, ShoppingBag, LogOut, UserCircle2, Sparkles, Layers, Newspaper, Shield, FileDown, Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useState } from 'react'
-import { generatePdfReport } from '../../utils/pdfGenerator'
-import PdfReportTemplate from '../pdf/PdfReportTemplate'
-
 export default function Navbar() {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
@@ -12,18 +9,6 @@ export default function Navbar() {
   const handleLogout = () => {
     logout()
     navigate('/signin')
-  }
-
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
-
-  const handleDownloadPdf = async () => {
-    if (isGeneratingPdf) return;
-    setIsGeneratingPdf(true);
-    // Allow a small delay for any rendering/fonts to settle if needed
-    setTimeout(async () => {
-      await generatePdfReport('pdf-report-container', 'Agentic_AI_KT_Report.pdf');
-      setIsGeneratingPdf(false);
-    }, 500);
   }
 
   const planLabel = user?.plan
@@ -61,15 +46,6 @@ export default function Navbar() {
             Welcome {user?.name}
           </h1>
 
-          <button
-            onClick={handleDownloadPdf}
-            disabled={isGeneratingPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-brand-500 text-black hover:bg-brand-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isGeneratingPdf ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-            {isGeneratingPdf ? 'Generating...' : 'Download Report'}
-          </button>
-
           {planLabel && (
             <Link
               to="/account"
@@ -96,9 +72,6 @@ export default function Navbar() {
           </button>
         </div>
       </div>
-      
-      {/* Hidden PDF Template */}
-      <PdfReportTemplate id="pdf-report-container" />
     </nav>
   )
 }

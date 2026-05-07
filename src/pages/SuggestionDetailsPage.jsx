@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Cpu, CheckCircle2, ChevronDown, Workflow, Play, RefreshCw } from 'lucide-react'
+import { Cpu, CheckCircle2, ChevronDown, Workflow, Play, RefreshCw, FileDown, Loader2 } from 'lucide-react'
 import StepCard from '../components/analysis/StepCard'
 import SuggestionCard from '../components/automation/SuggestionCard'
 import AgenticWorkflow from '../components/automation/AgenticWorkflowDiagramOld'
@@ -9,6 +9,8 @@ import SwimlaneDiagram from '../components/automation/AgenticWorkflowDiagramNew'
 import { getProcessFlow } from '../services/api'
 import SapValidationWorkflow from '../components/automation/AgenticArchitectureNew'
 import SuggestionExportPdf from '../components/pdf/SuggestionExportPdf'
+import { generatePdfReport } from '../utils/pdfGenerator'
+import PdfReportTemplate from '../components/pdf/PdfReportTemplate'
 
 
 function AnimatedScore({ target }) {
@@ -39,6 +41,17 @@ export default function SuggestionDetailsPage() {
   const navigate = useNavigate()
   const [suggestion, setSuggestion] = useState(null)
   const [processData, setProcessData] = useState(null)
+  const [isGeneratingPdfFull, setIsGeneratingPdfFull] = useState(false)
+
+  const handleDownloadPdfFull = async () => {
+    if (isGeneratingPdfFull) return;
+    setIsGeneratingPdfFull(true);
+    // Allow time for any diagrams or async data to settle
+    setTimeout(async () => {
+      await generatePdfReport('pdf-report-container', 'Agentic_AI_KT_Report.pdf');
+      setIsGeneratingPdfFull(false);
+    }, 2500);
+  }
 
   useEffect(() => {
     const loadData = () => {
@@ -114,7 +127,21 @@ export default function SuggestionDetailsPage() {
             </p>
           </div>
           <div className="shrink-0 text-right flex flex-col items-end gap-4">
-            <SuggestionExportPdf suggestion={suggestion} processData={processData} />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadPdfFull}
+                disabled={isGeneratingPdfFull}
+                className="flex items-center gap-2 px-4 py-2 h-10 text-sm font-medium bg-brand-500 text-black hover:bg-brand-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-500/10"
+              >
+                {isGeneratingPdfFull ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+                {isGeneratingPdfFull ? 'Preparing Full Report...' : 'Download Full Report'}
+              </button>
+              <SuggestionExportPdf suggestion={suggestion} processData={processData} />
+            </div>
+            
+            {/* Hidden PDF Template for Full Report */}
+            <PdfReportTemplate id="pdf-report-container" />
+
             <div>
               <p className="text-xs text-white/40 uppercase tracking-widest mb-1">
                 Automation Score
