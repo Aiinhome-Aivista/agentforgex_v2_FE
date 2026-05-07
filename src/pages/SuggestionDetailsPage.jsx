@@ -167,9 +167,6 @@ export default function SuggestionDetailsPage() {
               {/* <SuggestionExportPdf suggestion={suggestion} processData={processData} /> */}
             </div>
 
-            {/* Hidden PDF Template for Full Report */}
-            <PdfReportTemplate id="pdf-report-container" />
-
             <div>
               <p className="text-xs text-white/40 uppercase tracking-widest mb-1">
                 Automation Score
@@ -271,6 +268,7 @@ export default function SuggestionDetailsPage() {
           />
         </div>
       </div>
+      <PdfReportTemplate id="pdf-report-container" />
     </div>
   );
 }

@@ -909,7 +909,7 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
   const chapterFor = (sections) => sections[0]?.title || "";
 
   return (
-    <div className="fixed left-[-9999px] top-0 overflow-hidden pointer-events-none">
+    <div className="fixed left-[-9999px] top-0 w-0 h-0 overflow-hidden pointer-events-none">
       <div
         id={id}
         className="w-[794px] flex flex-col gap-4 bg-gray-200 p-8"
