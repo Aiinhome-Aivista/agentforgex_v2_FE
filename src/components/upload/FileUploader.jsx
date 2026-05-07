@@ -19,9 +19,9 @@ import UploadDropzone from "./UploadDropzone";
 import FileList from "./FileList";
 
 const PROCESSING_STAGES = [
-  { icon: Brain, text: "Thinking…", color: "text-purple-300" },
-  { icon: Search, text: "Reading your documents…", color: "text-sky-300" },
-  { icon: Cog, text: "Processing workflow steps…", color: "text-cyan-300" },
+  { icon: Brain, text: "Thinking…", color: "text-emerald-300" },
+  { icon: Search, text: "Reading your documents…", color: "text-emerald-300" },
+  { icon: Cog, text: "Processing workflow steps…", color: "text-emerald-300" },
   {
     icon: Sparkles,
     text: "Identifying automation patterns…",
@@ -30,7 +30,7 @@ const PROCESSING_STAGES = [
   {
     icon: Lightbulb,
     text: "Generating agentic insights…",
-    color: "text-amber-300",
+    color: "text-emerald-300",
   },
 ];
 
@@ -51,7 +51,7 @@ export default function FileUploader({ onAnalyze, loading }) {
     }
     const interval = setInterval(() => {
       setStageIdx((i) => (i + 1) % PROCESSING_STAGES.length);
-    }, 3500);
+    }, 10000);
     return () => clearInterval(interval);
   }, [loading]);
 
