@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +16,7 @@
   body {
     background-color: #0a0a0a;
     @apply text-white antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
   }
 
   /* Global Scrollbar */
@@ -108,7 +108,6 @@
   animation: countUp 0.8s ease-out forwards;
 }
 
-
 /* PDF Report Specifics */
 .pdf-report {
   @apply bg-white text-gray-900;
@@ -179,5 +178,13 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }

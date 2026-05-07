@@ -1,75 +1,131 @@
-import { useState, useRef, useCallback } from 'react'
-import { Upload, AlertCircle, Loader2, Plus } from 'lucide-react'
-import clsx from 'clsx'
+import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  Upload,
+  AlertCircle,
+  Loader2,
+  Plus,
+  Brain,
+  Cog,
+  Sparkles,
+  Search,
+  Lightbulb,
+} from "lucide-react";
+import clsx from "clsx";
 
-import { LABELS, getExt } from './constants'
-import FileTag from './FileTag'
-import UploadSidebar from './UploadSidebar'
-import UploadDropzone from './UploadDropzone'
-import FileList from './FileList'
+import { LABELS, getExt } from "./constants";
+import FileTag from "./FileTag";
+import UploadSidebar from "./UploadSidebar";
+import UploadDropzone from "./UploadDropzone";
+import FileList from "./FileList";
+
+const PROCESSING_STAGES = [
+  { icon: Brain, text: "Thinking…", color: "text-purple-300" },
+  { icon: Search, text: "Reading your documents…", color: "text-sky-300" },
+  { icon: Cog, text: "Processing workflow steps…", color: "text-cyan-300" },
+  {
+    icon: Sparkles,
+    text: "Identifying automation patterns…",
+    color: "text-emerald-300",
+  },
+  {
+    icon: Lightbulb,
+    text: "Generating agentic insights…",
+    color: "text-amber-300",
+  },
+];
 
 export default function FileUploader({ onAnalyze, loading }) {
-  const [files, setFiles] = useState([])
-  const [dragging, setDragging] = useState(false)
-  const [error, setError] = useState('')
-  const [tab, setTab] = useState(null) // null | 'docs' | 'erp' | 'user' | 'websearch'
-  const [userInput, setUserInput] = useState('')
-  const inputRef = useRef()
+  const [files, setFiles] = useState([]);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState(null); // null | 'docs' | 'erp' | 'user' | 'websearch'
+  const [userInput, setUserInput] = useState("");
+  const [stageIdx, setStageIdx] = useState(0);
+  const inputRef = useRef();
 
-  const addFiles = useCallback((incoming) => {
-    setError('')
-    const arr = Array.from(incoming)
-    const valid = arr.filter(f => {
-      const ext = getExt(f.name)
-      if (!LABELS[ext]) return false;
-      if (tab === 'erp') return ['csv', 'xlsx', 'xls'].includes(ext);
-      if (tab === 'docs') return ['pdf', 'docx', 'doc', 'txt'].includes(ext);
-      if (tab === 'websearch') return false; // websearch doesn't accept files
-      return false;
-    })
-    if (valid.length !== arr.length && tab !== 'websearch') setError('Some files were skipped (unsupported type).')
-    setFiles(prev => {
-      const names = new Set(prev.map(f => f.name))
-      return [...prev, ...valid.filter(f => !names.has(f.name))].slice(0, 20)
-    })
-  }, [tab])
-
-  const onDrop = (e) => {
-    e.preventDefault(); setDragging(false)
-    addFiles(e.dataTransfer.files)
-  }
-  const onDragOver = (e) => { e.preventDefault(); setDragging(true) }
-  const onDragLeave = () => setDragging(false)
-  const removeFile = (name) => setFiles(f => f.filter(x => x.name !== name))
-
-  const handleSubmit = () => {
-    if (files.length === 0 && (!userInput || userInput.trim() === '')) {
-      setError('Please provide input for the selected mode.');
+  // Cycle through agent processing stages while loading
+  useEffect(() => {
+    if (!loading) {
+      setStageIdx(0);
       return;
     }
-    onAnalyze(files, userInput)
-  }
+    const interval = setInterval(() => {
+      setStageIdx((i) => (i + 1) % PROCESSING_STAGES.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const addFiles = useCallback(
+    (incoming) => {
+      setError("");
+      const arr = Array.from(incoming);
+      const valid = arr.filter((f) => {
+        const ext = getExt(f.name);
+        if (!LABELS[ext]) return false;
+        if (tab === "erp") return ["csv", "xlsx", "xls"].includes(ext);
+        if (tab === "docs") return ["pdf", "docx", "doc", "txt"].includes(ext);
+        if (tab === "websearch") return false; // websearch doesn't accept files
+        return false;
+      });
+      if (valid.length !== arr.length && tab !== "websearch")
+        setError("Some files were skipped (unsupported type).");
+      setFiles((prev) => {
+        const names = new Set(prev.map((f) => f.name));
+        return [...prev, ...valid.filter((f) => !names.has(f.name))].slice(
+          0,
+          20,
+        );
+      });
+    },
+    [tab],
+  );
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    addFiles(e.dataTransfer.files);
+  };
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setDragging(true);
+  };
+  const onDragLeave = () => setDragging(false);
+  const removeFile = (name) =>
+    setFiles((f) => f.filter((x) => x.name !== name));
+
+  const handleSubmit = () => {
+    if (files.length === 0 && (!userInput || userInput.trim() === "")) {
+      setError("Please provide input for the selected mode.");
+      return;
+    }
+    onAnalyze(files, userInput);
+  };
+
+  const stage = PROCESSING_STAGES[stageIdx];
+  const StageIcon = stage.icon;
 
   return (
-    <div className={clsx(
-      "w-full mx-auto space-y-8 transition-all duration-700 ease-in-out",
-      tab === null ? "max-w-7xl" : "max-w-7xl"
-    )}>
+    <div
+      className={clsx(
+        "w-full mx-auto space-y-8 transition-all duration-700 ease-in-out",
+        tab === null ? "max-w-7xl" : "max-w-7xl",
+      )}
+    >
       {/* Initial Upload Button Toggle */}
       <div className="flex justify-center">
         <button
           onClick={() => {
             if (tab === null) {
-              setTab('docs');
+              setTab("docs");
             } else {
               setTab(null);
               setFiles([]);
-              setUserInput('');
+              setUserInput("");
             }
           }}
           className={clsx(
-            'flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all duration-300 font-bold tracking-tight',
-            'bg-brand-500 text-black shadow-lg shadow-brand-500/20 hover:bg-brand-400'
+            "flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all duration-300 font-bold tracking-tight",
+            "bg-brand-500 text-black shadow-lg shadow-brand-500/20 hover:bg-brand-400",
           )}
         >
           <Plus size={16} />
@@ -82,27 +138,35 @@ export default function FileUploader({ onAnalyze, loading }) {
           "flex transition-all duration-700 ease-in-out overflow-hidden shadow-2xl",
           tab === null
             ? "w-full border-2 border-dashed border-white/20 bg-white/10 rounded-2xl min-h-[250px]  cursor-pointer hover:border-brand-500/50 hover:bg-white/[0.08]"
-            : "relative bg-[#0d0d0d]/40 backdrop-blur-3xl border border-white/20 rounded-3xl min-h-[350px] shadow-[0_0_40px_-15px_rgba(255,255,255,0.05)]"
+            : "relative bg-[#0d0d0d]/40 backdrop-blur-3xl border border-white/20 rounded-3xl min-h-[350px] shadow-[0_0_40px_-15px_rgba(255,255,255,0.05)]",
         )}
       >
         {tab === null ? (
           <div
-            onClick={() => setTab('docs')}
+            onClick={() => setTab("docs")}
             className="w-full p-16 text-center flex flex-col items-center gap-4 group"
           >
             <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 shadow-lg flex items-center justify-center">
-              <Upload size={22} className="text-white/20 group-hover:text-brand-500 transition-colors" />
+              <Upload
+                size={22}
+                className="text-white/20 group-hover:text-brand-500 transition-colors"
+              />
             </div>
             <div>
               <p className="font-bold text-white/90 text-lg">
-                Add your sources, add user input <span className="text-brand-500 font-normal"> or </span> search the web
+                Add your sources, add user input{" "}
+                <span className="text-brand-500 font-normal"> or </span> search
+                the web
               </p>
               <p className="text-sm text-white/40 mt-1 max-w-2xl mx-auto leading-relaxed">
-                Connect your process documentation, ERP exports, or search for best practices to initiate deeper agentic analysis.
+                Connect your process documentation, ERP exports, or search for
+                best practices to initiate deeper agentic analysis.
               </p>
             </div>
             <div className="flex gap-3 text-xs text-white/20">
-              {['PDF', 'DOCX', 'TXT', 'CSV', 'XLSX', 'XLS'].map(t => <FileTag key={t} label={t} />)}
+              {["PDF", "DOCX", "TXT", "CSV", "XLSX", "XLS"].map((t) => (
+                <FileTag key={t} label={t} />
+              ))}
             </div>
           </div>
         ) : (
@@ -111,7 +175,12 @@ export default function FileUploader({ onAnalyze, loading }) {
             <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-brand-500/5 blur-[120px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/5 blur-[120px] pointer-events-none" />
 
-            <UploadSidebar tab={tab} setTab={setTab} setFiles={setFiles} setUserInput={setUserInput} />
+            <UploadSidebar
+              tab={tab}
+              setTab={setTab}
+              setFiles={setFiles}
+              setUserInput={setUserInput}
+            />
 
             {/* Content Area */}
             <div className="flex-1 p-8 flex flex-col relative overflow-hidden">
@@ -137,35 +206,103 @@ export default function FileUploader({ onAnalyze, loading }) {
         )}
       </div>
 
-      <FileList files={files} removeFile={removeFile} tab={tab} userInput={userInput} removeText={() => setUserInput('')} />
+      <FileList
+        files={files}
+        removeFile={removeFile}
+        tab={tab}
+        userInput={userInput}
+        removeText={() => setUserInput("")}
+      />
 
       <button
         onClick={handleSubmit}
-        disabled={loading || (files.length === 0 && (!userInput || userInput.trim() === ''))}
+        disabled={
+          loading ||
+          (files.length === 0 && (!userInput || userInput.trim() === ""))
+        }
         className={clsx(
           "w-full relative group overflow-hidden py-3 rounded-xl transition-all duration-500 disabled:cursor-not-allowed",
-          (loading || (files.length === 0 && (!userInput || userInput.trim() === ''))) ? "bg-brand-500/10" : "bg-brand-500"
+          loading ||
+            (files.length === 0 && (!userInput || userInput.trim() === ""))
+            ? "bg-brand-500/10"
+            : "bg-brand-500",
         )}
       >
+        {/* Shimmer sweep while loading */}
+        {loading && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.18) 50%, transparent 100%)",
+              backgroundSize: "200% 100%",
+              animation: "shimmer 2s linear infinite",
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+
         <div className="relative flex items-center justify-center gap-3">
           {loading ? (
-            <><Loader2 size={18} className="animate-spin text-brand-500/60" /><span className="text-brand-500/60 font-bold">Analyzing Process...</span></>
+            <>
+              <Loader2 size={16} className="animate-spin text-brand-500/60" />
+              <StageIcon
+                size={18}
+                key={stageIdx}
+                className={clsx(
+                  "animate-pulse transition-colors duration-500",
+                  stage.color,
+                )}
+              />
+              <span
+                key={`t-${stageIdx}`}
+                className={clsx(
+                  "font-bold transition-all duration-500 animate-in fade-in",
+                  stage.color,
+                )}
+              >
+                {stage.text}
+              </span>
+              <span className="flex gap-1 ml-1">
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-current animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                />
+              </span>
+            </>
           ) : (
             <>
-              <Upload size={18} className={clsx(
-                "transition-transform",
-                (files.length === 0 && (!userInput || userInput.trim() === '')) ? "text-brand-500/60" : "text-black group-hover:-translate-y-1"
-              )} />
-              <span className={clsx(
-                "font-bold",
-                (files.length === 0 && (!userInput || userInput.trim() === '')) ? "text-brand-500/60" : "text-black"
-              )}>Analyze Process</span>
+              <Upload
+                size={18}
+                className={clsx(
+                  "transition-transform",
+                  files.length === 0 && (!userInput || userInput.trim() === "")
+                    ? "text-brand-500/60"
+                    : "text-black group-hover:-translate-y-1",
+                )}
+              />
+              <span
+                className={clsx(
+                  "font-bold",
+                  files.length === 0 && (!userInput || userInput.trim() === "")
+                    ? "text-brand-500/60"
+                    : "text-black",
+                )}
+              >
+                Analyze Process
+              </span>
             </>
           )}
         </div>
       </button>
     </div>
-  )
+  );
 }
-
