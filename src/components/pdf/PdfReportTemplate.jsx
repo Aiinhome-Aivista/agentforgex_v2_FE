@@ -988,12 +988,18 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
             >
               <div
                 className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
-                style={{ background: "#f8fafc" }}
+                style={{ 
+                  background: "#f8fafc",
+                  width: "700px",
+                  margin: "0 auto"
+                }}
               >
-                <SwimlaneDiagram
-                  suggestionId={suggestionContext.suggestionId}
-                  forPdf={true}
-                />
+                <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '143%' }}>
+                  <SwimlaneDiagram
+                    suggestionId={suggestionContext.suggestionId}
+                    forPdf={true}
+                  />
+                </div>
               </div>
             </ContentPage>
 
@@ -1005,14 +1011,20 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
             >
               <div
                 className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
-                style={{ background: "#f8fafc" }}
+                style={{ 
+                  background: "#f8fafc",
+                  width: "700px",
+                  margin: "0 auto"
+                }}
               >
-                <SapValidationWorkflow
-                  suggestionId={suggestionContext.suggestionId}
-                  stepKey={suggestionContext.stepKey}
-                  analysisId={suggestionContext.analysisId}
-                  forPdf={true}
-                />
+                <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '143%' }}>
+                  <SapValidationWorkflow
+                    suggestionId={suggestionContext.suggestionId}
+                    stepKey={suggestionContext.stepKey}
+                    analysisId={suggestionContext.analysisId}
+                    forPdf={true}
+                  />
+                </div>
               </div>
             </ContentPage>
           </>
