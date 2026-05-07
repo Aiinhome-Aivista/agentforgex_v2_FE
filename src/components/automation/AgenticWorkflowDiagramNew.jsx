@@ -326,8 +326,8 @@ export default function SwimlaneDiagram({
 
             {/* SVG Flow */}
             <svg
-              width={svgW}
-              height={svgH}
+              width={Math.max(1, svgW)}
+              height={Math.max(1, svgH)}
               style={{ background: "transparent", overflow: "visible" }}
             >
               <Defs markerId={markerId} />

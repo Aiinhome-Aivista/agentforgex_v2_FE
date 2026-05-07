@@ -92,138 +92,69 @@ const PageFooter = ({
 //   (background-clip:text was the cause of the faded title)
 // ──────────────────────────────────────────────────────────────
 const CoverPage = ({ metadata }) => {
-  const canvasRef = React.useRef(null);
-
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
-
-    const particles = [];
+  // Pre-compute particles for SVG render (replaces canvas to avoid html2canvas createPattern errors)
+  const W = 794, H = 1123;
+  const particles = React.useMemo(() => {
+    const pts = [];
     for (let i = 0; i < 70; i++) {
-      particles.push({
-        x: (i * 137.5) % W,
-        y: (i * 263.7) % H,
-        r: 1 + ((i * 7) % 3),
-      });
+      pts.push({ x: (i * 137.5) % W, y: (i * 263.7) % H, r: 1 + ((i * 7) % 3) });
     }
+    return pts;
+  }, []);
 
-    ctx.clearRect(0, 0, W, H);
-
-    const grad = ctx.createRadialGradient(
-      W * 0.78,
-      H * 0.18,
-      50,
-      W * 0.78,
-      H * 0.18,
-      W,
-    );
-    grad.addColorStop(0, "rgba(16,185,129,0.14)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.lineWidth = 0.6;
+  const lines = React.useMemo(() => {
+    const result = [];
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d < 140) {
-          ctx.strokeStyle = `rgba(52, 211, 153, ${0.25 * (1 - d / 140)})`;
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.stroke();
+          result.push({ x1: particles[i].x, y1: particles[i].y, x2: particles[j].x, y2: particles[j].y, opacity: 0.25 * (1 - d / 140) });
         }
       }
     }
-
-    particles.forEach((p) => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r + 3, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(16,185,129,0.18)";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(110, 231, 183, 0.95)";
-      ctx.fill();
-    });
-  }, []);
+    return result;
+  }, [particles]);
 
   return (
     <Page dark>
-      {/* Base radial gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at 78% 0%, #0f3d2e 0%, #0a1628 45%, #050714 100%)",
-        }}
-      />
+      <div className="absolute inset-0 bg-[#050714]" />
+      <div className="absolute inset-0 opacity-20 bg-[#0f3d2e]" />
 
-      {/* Grid pattern with vertical fade */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ opacity: 0.45 }}
-      >
-        <defs>
-          <pattern
-            id="cover-grid"
-            width="44"
-            height="44"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 44 0 L 0 0 0 44"
-              fill="none"
-              stroke="rgba(16,185,129,0.13)"
-              strokeWidth="0.6"
-            />
-          </pattern>
-          <linearGradient id="fadeMask" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="white" stopOpacity="0" />
-            <stop offset="40%" stopColor="white" stopOpacity="1" />
-            <stop offset="100%" stopColor="white" stopOpacity="0.25" />
-          </linearGradient>
-          <mask id="gridFade">
-            <rect width="100%" height="100%" fill="url(#fadeMask)" />
-          </mask>
-        </defs>
-        <rect
-          width="100%"
-          height="100%"
-          fill="url(#cover-grid)"
-          mask="url(#gridFade)"
-        />
-      </svg>
-
-      {/* Particle network */}
-      <canvas
-        ref={canvasRef}
         width="794"
         height="1123"
+        viewBox="0 0 794 1123"
         className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ opacity: 0.85 }}
-      />
+      >
+        {/* 1. Manual Grid */}
+        <g opacity="0.1">
+          {Array.from({ length: Math.ceil(794 / 44) + 1 }).map((_, i) => (
+            <line key={`v${i}`} x1={i * 44} y1="0" x2={i * 44} y2="1123" stroke="#10b981" strokeWidth="0.5" />
+          ))}
+          {Array.from({ length: Math.ceil(1123 / 44) + 1 }).map((_, i) => (
+            <line key={`h${i}`} x1="0" y1={i * 44} x2="794" y2={i * 44} stroke="#10b981" strokeWidth="0.5" />
+          ))}
+        </g>
 
-      {/* Glow orbs */}
-      <div
-        className="absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(16,185,129,0.35) 0%, transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute -bottom-32 -left-32 w-[480px] h-[480px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)",
-        }}
-      />
+        {/* 2. Glow Orbs (Basic) */}
+        <circle cx="794" cy="0" r="300" fill="#10b981" opacity="0.1" />
+        <circle cx="0" cy="1123" r="350" fill="#38bdf8" opacity="0.05" />
+
+        {/* 3. Particle Network */}
+        <g opacity="0.6">
+          {lines.map((l, i) => (
+            <line key={`l${i}`} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+              stroke="#34d399" strokeWidth="0.6" strokeOpacity={l.opacity} />
+          ))}
+          {particles.map((p, i) => (
+            <g key={`p${i}`}>
+              <circle cx={p.x} cy={p.y} r={p.r} fill="#6ee7b7" />
+            </g>
+          ))}
+        </g>
+      </svg>
 
       {/* Bottom circuit ribbon */}
       <svg
@@ -272,7 +203,6 @@ const CoverPage = ({ metadata }) => {
               className="w-11 h-11 rounded-xl flex items-center justify-center"
               style={{
                 background: BRAND.primary,
-                boxShadow: "0 0 24px rgba(16,185,129,0.55)",
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="black">
@@ -315,10 +245,7 @@ const CoverPage = ({ metadata }) => {
           <div className="flex items-center gap-3 mb-6">
             <div
               className="h-px w-14"
-              style={{
-                background:
-                  "linear-gradient(90deg, transparent 0%, #10b981 100%)",
-              }}
+              style={{ background: "#10b981" }}
             />
             <p
               className="text-[10px] tracking-[0.4em] uppercase"
@@ -339,7 +266,6 @@ const CoverPage = ({ metadata }) => {
               fontWeight: 700,
               lineHeight: 1.08,
               letterSpacing: "-0.02em",
-              textShadow: "0 0 40px rgba(16,185,129,0.35)",
               marginBottom: "20px",
               maxWidth: "92%",
             }}
@@ -387,15 +313,11 @@ const CoverPage = ({ metadata }) => {
               className="w-2 h-2 rounded-full"
               style={{
                 background: "#34d399",
-                boxShadow: "0 0 14px rgba(16,185,129,0.9)",
               }}
             />
             <div
               className="h-px flex-1"
-              style={{
-                background:
-                  "linear-gradient(90deg, #10b981 0%, transparent 100%)",
-              }}
+              style={{ background: "rgba(16,185,129,0.4)" }}
             />
           </div>
 
@@ -961,7 +883,7 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
   const chapterFor = (sections) => sections[0]?.title || "";
 
   return (
-    <div className="absolute w-0 h-0 overflow-hidden pointer-events-none">
+    <div className="fixed left-[-9999px] top-0 overflow-hidden pointer-events-none">
       <div
         id={id}
         className="w-[794px] flex flex-col gap-4 bg-gray-200 p-8"
