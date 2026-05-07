@@ -1,89 +1,107 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Cpu, CheckCircle2, ChevronDown, Workflow, Play, RefreshCw, FileDown, Loader2 } from 'lucide-react'
-import StepCard from '../components/analysis/StepCard'
-import SuggestionCard from '../components/automation/SuggestionCard'
-import AgenticWorkflow from '../components/automation/AgenticWorkflowDiagramOld'
-import AgenticDeploymentFlow from '../components/automation/AgenticArchitectureOld'
-import SwimlaneDiagram from '../components/automation/AgenticWorkflowDiagramNew'
-import { getProcessFlow } from '../services/api'
-import SapValidationWorkflow from '../components/automation/AgenticArchitectureNew'
-import SuggestionExportPdf from '../components/pdf/SuggestionExportPdf'
-import { generatePdfReport } from '../utils/pdfGenerator'
-import PdfReportTemplate from '../components/pdf/PdfReportTemplate'
-
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Cpu,
+  CheckCircle2,
+  ChevronDown,
+  Workflow,
+  Play,
+  RefreshCw,
+  FileDown,
+  Loader2,
+  Download,
+} from "lucide-react";
+import StepCard from "../components/analysis/StepCard";
+import SuggestionCard from "../components/automation/SuggestionCard";
+import AgenticWorkflow from "../components/automation/AgenticWorkflowDiagramOld";
+import AgenticDeploymentFlow from "../components/automation/AgenticArchitectureOld";
+import SwimlaneDiagram from "../components/automation/AgenticWorkflowDiagramNew";
+import { getProcessFlow } from "../services/api";
+import SapValidationWorkflow from "../components/automation/AgenticArchitectureNew";
+import SuggestionExportPdf from "../components/pdf/SuggestionExportPdf";
+import { generatePdfReport } from "../utils/pdfGenerator";
+import PdfReportTemplate from "../components/pdf/PdfReportTemplate";
 
 function AnimatedScore({ target }) {
-  const [display, setDisplay] = useState(0)
+  const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    if (!target) return
-    const steps = 40
-    const increment = target / steps
-    let current = 0
+    if (!target) return;
+    const steps = 40;
+    const increment = target / steps;
+    let current = 0;
     const timer = setInterval(() => {
-      current = Math.min(current + increment, target)
-      setDisplay(Math.round(current))
-      if (current >= target) clearInterval(timer)
-    }, 30)
-    return () => clearInterval(timer)
-  }, [target])
+      current = Math.min(current + increment, target);
+      setDisplay(Math.round(current));
+      if (current >= target) clearInterval(timer);
+    }, 30);
+    return () => clearInterval(timer);
+  }, [target]);
 
   return (
     <span className="text-5xl font-black text-brand-500 tabular-nums leading-none">
       {display}%
     </span>
-  )
+  );
 }
 
 export default function SuggestionDetailsPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [suggestion, setSuggestion] = useState(null)
-  const [processData, setProcessData] = useState(null)
-  const [isGeneratingPdfFull, setIsGeneratingPdfFull] = useState(false)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [suggestion, setSuggestion] = useState(null);
+  const [processData, setProcessData] = useState(null);
+  const [isGeneratingPdfFull, setIsGeneratingPdfFull] = useState(false);
 
   const handleDownloadPdfFull = async () => {
     if (isGeneratingPdfFull) return;
     setIsGeneratingPdfFull(true);
     // Allow time for any diagrams or async data to settle
     setTimeout(async () => {
-      await generatePdfReport('pdf-report-container', 'Agentic_AI_KT_Report.pdf');
+      await generatePdfReport(
+        "pdf-report-container",
+        "Agentic_AI_KT_Report.pdf",
+      );
       setIsGeneratingPdfFull(false);
     }, 2500);
-  }
+  };
 
   useEffect(() => {
     const loadData = () => {
-      const data = localStorage.getItem(`suggestion_${id}`)
+      const data = localStorage.getItem(`suggestion_${id}`);
       if (data) {
-        const parsed = JSON.parse(data)
-        setSuggestion(parsed)
+        const parsed = JSON.parse(data);
+        setSuggestion(parsed);
 
         // Read the cached analysis data from localStorage
         if (parsed.analysisId) {
-          const analysisData = localStorage.getItem(`analysis_${parsed.analysisId}`)
+          const analysisData = localStorage.getItem(
+            `analysis_${parsed.analysisId}`,
+          );
           if (analysisData) {
-            setProcessData(JSON.parse(analysisData))
+            setProcessData(JSON.parse(analysisData));
           }
         }
       }
-    }
+    };
 
-    loadData()
-    window.addEventListener('automation-complete', loadData)
+    loadData();
+    window.addEventListener("automation-complete", loadData);
     const handleStorage = (e) => {
-      if (e.key === `suggestion_${id}` || (suggestion?.analysisId && e.key === `analysis_${suggestion.analysisId}`)) {
+      if (
+        e.key === `suggestion_${id}` ||
+        (suggestion?.analysisId &&
+          e.key === `analysis_${suggestion.analysisId}`)
+      ) {
         loadData();
       }
     };
-    window.addEventListener('storage', handleStorage)
+    window.addEventListener("storage", handleStorage);
 
     return () => {
-      window.removeEventListener('automation-complete', loadData)
-      window.removeEventListener('storage', handleStorage)
-    }
-  }, [id, suggestion?.analysisId])
+      window.removeEventListener("automation-complete", loadData);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [id, suggestion?.analysisId]);
 
   if (!suggestion) {
     return (
@@ -91,26 +109,27 @@ export default function SuggestionDetailsPage() {
         <div className="text-center animate-pulse">
           <Cpu className="mx-auto mb-4 text-brand-500" size={48} />
           <h2 className="text-xl font-bold">Loading Suggestion Data...</h2>
-          <p className="text-white/50">If this persists, the data might be lost.</p>
+          <p className="text-white/50">
+            If this persists, the data might be lost.
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
-  const process = processData?.process
-  const steps = processData?.steps || []
+  const process = processData?.process;
+  const steps = processData?.steps || [];
   // Find the step this suggestion belongs to
-  const matchedStep = steps.find(s => s.id === suggestion.step_key)
-  const matchedStepIndex = matchedStep ? steps.indexOf(matchedStep) : 0
+  const matchedStep = steps.find((s) => s.id === suggestion.step_key);
+  const matchedStepIndex = matchedStep ? steps.indexOf(matchedStep) : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-
       {/* ── Process Header Card ── */}
       {process && (
         <div
           className="card p-6 flex items-start justify-between gap-6 opacity-0 animate-slide-up"
-          style={{ animationDelay: '0ms', animationFillMode: 'both' }}
+          style={{ animationDelay: "0ms", animationFillMode: "both" }}
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
@@ -131,14 +150,23 @@ export default function SuggestionDetailsPage() {
               <button
                 onClick={handleDownloadPdfFull}
                 disabled={isGeneratingPdfFull}
-                className="flex items-center gap-2 px-4 py-2 h-10 text-sm font-medium bg-brand-500 text-black hover:bg-brand-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-500/10"
+                className="btn-primary px-4 py-2 h-10 shadow-lg shadow-brand-500/20 flex items-center gap-2"
+                title="Download Full Report"
               >
-                {isGeneratingPdfFull ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-                {isGeneratingPdfFull ? 'Preparing Full Report...' : 'Download Full Report'}
+                {isGeneratingPdfFull ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin text-black" />
+                    <span className="text-black font-semibold text-sm">
+                      Preparing...
+                    </span>
+                  </>
+                ) : (
+                  <Download size={18} className="text-black" />
+                )}
               </button>
-              <SuggestionExportPdf suggestion={suggestion} processData={processData} />
+              {/* <SuggestionExportPdf suggestion={suggestion} processData={processData} /> */}
             </div>
-            
+
             {/* Hidden PDF Template for Full Report */}
             <PdfReportTemplate id="pdf-report-container" />
 
@@ -150,7 +178,9 @@ export default function SuggestionDetailsPage() {
                 <AnimatedScore target={process.automation_score} />
               </div>
               {process.erp_system && (
-                <p className="text-xs text-white/40 mt-1">ERP: {process.erp_system}</p>
+                <p className="text-xs text-white/40 mt-1">
+                  ERP: {process.erp_system}
+                </p>
               )}
             </div>
           </div>
@@ -160,13 +190,13 @@ export default function SuggestionDetailsPage() {
       {/* ── Step Card + Suggestion ── */}
       <div
         className="rounded-3xl  backdrop-blur-sm shadow-2xl space-y-6 opacity-0 animate-slide-up"
-        style={{ animationDelay: '150ms', animationFillMode: 'both' }}
+        style={{ animationDelay: "150ms", animationFillMode: "both" }}
       >
         {/* Selected Step Card */}
         {matchedStep && (
           <div
             className="[&>div]:w-full opacity-0 animate-slide-up"
-            style={{ animationDelay: '300ms', animationFillMode: 'both' }}
+            style={{ animationDelay: "300ms", animationFillMode: "both" }}
           >
             <StepCard
               step={matchedStep}
@@ -180,7 +210,7 @@ export default function SuggestionDetailsPage() {
         {/* Down arrow connector */}
         <div
           className="flex justify-center opacity-0 animate-fade-in"
-          style={{ animationDelay: '500ms', animationFillMode: 'both' }}
+          style={{ animationDelay: "500ms", animationFillMode: "both" }}
         >
           <div className="flex flex-col items-center">
             <div className="w-px h-5 bg-white" />
@@ -191,7 +221,7 @@ export default function SuggestionDetailsPage() {
         {/* Suggestion Card */}
         <div
           className="grid grid-cols-1 gap-4 opacity-0 animate-slide-up"
-          style={{ animationDelay: '600ms', animationFillMode: 'both' }}
+          style={{ animationDelay: "600ms", animationFillMode: "both" }}
         >
           <SuggestionCard suggestion={suggestion} index={0} hideChip />
         </div>
@@ -221,26 +251,28 @@ export default function SuggestionDetailsPage() {
 
         <div
           className="opacity-0 animate-slide-up"
-          style={{ animationDelay: '1200ms', animationFillMode: 'both' }}
+          style={{ animationDelay: "1200ms", animationFillMode: "both" }}
         >
           <SwimlaneDiagramCard suggestionId={id} />
         </div>
 
         <div
           className="opacity-0 animate-slide-up"
-          style={{ animationDelay: '1400ms', animationFillMode: 'both' }}
+          style={{ animationDelay: "1400ms", animationFillMode: "both" }}
         >
           <AgenticArchitectureCard
             suggestionId={id}
             stepKey={suggestion.step_key}
-            analysisId={suggestion.analysisId || processData?.process?._key || processData?.process?.id}
+            analysisId={
+              suggestion.analysisId ||
+              processData?.process?._key ||
+              processData?.process?.id
+            }
           />
         </div>
-
-
       </div>
     </div>
-  )
+  );
 }
 
 function AgenticWorkflowCard({ suggestionId }) {
@@ -251,15 +283,19 @@ function AgenticWorkflowCard({ suggestionId }) {
           <Workflow size={20} className="text-brand-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">Agentic Process Workflow</h2>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Operating Model: Agentic Operations</p>
+          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">
+            Agentic Process Workflow
+          </h2>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+            Operating Model: Agentic Operations
+          </p>
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
         <AgenticWorkflow suggestionId={suggestionId} />
       </div>
     </div>
-  )
+  );
 }
 
 function AgentDeploymentCard({ suggestionId }) {
@@ -270,8 +306,12 @@ function AgentDeploymentCard({ suggestionId }) {
           <Cpu size={20} className="text-brand-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">Agent  Deployment</h2>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Operating Model: Infrastructure Layer</p>
+          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">
+            Agent Deployment
+          </h2>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+            Operating Model: Infrastructure Layer
+          </p>
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
@@ -280,12 +320,15 @@ function AgentDeploymentCard({ suggestionId }) {
 
       <div className="flex justify-end mt-4 ">
         <button className="btn-primary shadow-xl shadow-brand-500/20 text-[10px] uppercase group">
-          <Play size={14} className="fill-current group-hover:scale-110 transition-transform" />
+          <Play
+            size={14}
+            className="fill-current group-hover:scale-110 transition-transform"
+          />
           Run Deployment
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 function AgenticArchitectureCard({ suggestionId, stepKey, analysisId }) {
@@ -296,8 +339,12 @@ function AgenticArchitectureCard({ suggestionId, stepKey, analysisId }) {
           <Cpu size={20} className="text-brand-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">Agent  Architecture</h2>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Operating Model: Workflow Automation</p>
+          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">
+            Agent Architecture
+          </h2>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+            Operating Model: Workflow Automation
+          </p>
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
@@ -307,12 +354,12 @@ function AgenticArchitectureCard({ suggestionId, stepKey, analysisId }) {
           analysisId={analysisId}
           onComplete={() => {
             // Re-sync from sessionStorage or trigger data refresh
-            window.dispatchEvent(new Event('automation-complete'));
+            window.dispatchEvent(new Event("automation-complete"));
           }}
         />
       </div>
     </div>
-  )
+  );
 }
 
 // function DeploymentModelCard({ suggestion, step }) {
@@ -426,8 +473,6 @@ function AgenticArchitectureCard({ suggestionId, stepKey, analysisId }) {
 //   )
 // }
 
-
-
 function SwimlaneDiagramCard({ suggestionId }) {
   return (
     <div className="card p-8 border-brand-500/20 bg-gradient-to-b from-white/5 to-transparent">
@@ -436,14 +481,20 @@ function SwimlaneDiagramCard({ suggestionId }) {
           <Workflow size={20} className="text-brand-500" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">Agentic Process Workflow</h2>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Operating Model: Agentic Operations</p>
+          <h2 className="text-xl font-bold text-white/90 uppercase tracking-tight">
+            Agentic Process Workflow
+          </h2>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+            Operating Model: Agentic Operations
+          </p>
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
         {!suggestionId ? (
           <div className="min-h-[400px] flex items-center justify-center">
-            <p className="text-white/30 text-sm animate-pulse">Initializing Diagram...</p>
+            <p className="text-white/30 text-sm animate-pulse">
+              Initializing Diagram...
+            </p>
           </div>
         ) : (
           <SwimlaneDiagram suggestionId={suggestionId} />
@@ -452,4 +503,3 @@ function SwimlaneDiagramCard({ suggestionId }) {
     </div>
   );
 }
-
