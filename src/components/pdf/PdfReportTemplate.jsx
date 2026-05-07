@@ -987,19 +987,15 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
               classification={meta.classification}
             >
               <div
-                className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
+                className="mt-2 rounded-xl border border-slate-200 overflow-hidden"
                 style={{ 
                   background: "#f8fafc",
-                  width: "700px",
-                  margin: "0 auto"
                 }}
               >
-                <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '143%' }}>
-                  <SwimlaneDiagram
-                    suggestionId={suggestionContext.suggestionId}
-                    forPdf={true}
-                  />
-                </div>
+                <SwimlaneDiagram
+                  suggestionId={suggestionContext.suggestionId}
+                  forPdf={true}
+                />
               </div>
             </ContentPage>
 
@@ -1010,21 +1006,17 @@ export default function PdfReportTemplate({ id = "pdf-report-container" }) {
               classification={meta.classification}
             >
               <div
-                className="mt-4 rounded-xl border border-slate-200 overflow-hidden"
+                className="mt-2 rounded-xl border border-slate-200 overflow-hidden"
                 style={{ 
                   background: "#f8fafc",
-                  width: "700px",
-                  margin: "0 auto"
                 }}
               >
-                <div style={{ transform: 'scale(0.7)', transformOrigin: 'top left', width: '143%' }}>
-                  <SapValidationWorkflow
-                    suggestionId={suggestionContext.suggestionId}
-                    stepKey={suggestionContext.stepKey}
-                    analysisId={suggestionContext.analysisId}
-                    forPdf={true}
-                  />
-                </div>
+                <SapValidationWorkflow
+                  suggestionId={suggestionContext.suggestionId}
+                  stepKey={suggestionContext.stepKey}
+                  analysisId={suggestionContext.analysisId}
+                  forPdf={true}
+                />
               </div>
             </ContentPage>
           </>

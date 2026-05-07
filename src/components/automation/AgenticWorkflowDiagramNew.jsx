@@ -222,114 +222,89 @@ export default function SwimlaneDiagram({
     );
   }
 
-  // ── PDF static render: full-size, no zoom/pan, no controls ──
+  // ── PDF static render: horizontal layout matching UI, scaled to fit page ──
   if (forPdf) {
     const totalW = TITLE_W + LABEL_W + svgW;
+    const totalH = svgH;
+    // Explicit dimensions so html2canvas can capture the off-screen SVG
+    const renderW = 670; // fits within PDF content area (794 - padding)
+    const renderH = (totalH / totalW) * renderW;
+
     return (
       <div
         className="w-full"
         style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
       >
-        <div
-          style={{
-            display: "flex",
-            width: totalW,
-            height: svgH,
-            background: WHITE,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 8,
-            overflow: "visible",
-            position: "relative",
-          }}
-        >
-          {/* Title Column */}
-          <div
-            style={{
-              width: TITLE_W,
-              background: WHITE,
-              borderRight: `1px solid ${BORDER}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              writingMode: "vertical-rl",
-              fontWeight: 700,
-              fontSize: 11,
-              color: "#111",
-              letterSpacing: "0.05em",
-              minHeight: "100%",
-              padding: "20px 0",
-              textTransform: "capitalize",
-            }}
+        <div className="relative rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <svg
+            viewBox={`0 0 ${totalW} ${totalH}`}
+            width={renderW}
+            height={renderH}
+            style={{ display: "block" }}
+            preserveAspectRatio="xMidYMid meet"
           >
-            {diagramData.title}
-          </div>
+            {/* Background */}
+            <rect width={totalW} height={totalH} fill={WHITE} />
 
-          {/* Main content */}
-          <div style={{ display: "flex", position: "relative" }}>
+            {/* Title Column */}
+            <rect x={0} y={0} width={TITLE_W} height={totalH} fill={WHITE} />
+            <line x1={TITLE_W} y1={0} x2={TITLE_W} y2={totalH} stroke={BORDER} strokeWidth={1} />
+            <text
+              x={TITLE_W / 2}
+              y={totalH / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontWeight={700}
+              fontSize={11}
+              fill="#111"
+              letterSpacing="0.05em"
+              style={{ writingMode: "tb" }}
+              transform={`rotate(180, ${TITLE_W / 2}, ${totalH / 2})`}
+            >
+              {diagramData.title}
+            </text>
+
             {/* Lane Horizontal Lines */}
             {Array.from({ length: laneCount + 1 }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  top: i * LANE_H,
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  backgroundColor: BORDER,
-                  pointerEvents: "none",
-                }}
+              <line
+                key={`lane-line-${i}`}
+                x1={TITLE_W}
+                y1={i * LANE_H}
+                x2={totalW}
+                y2={i * LANE_H}
+                stroke={BORDER}
+                strokeWidth={1}
               />
             ))}
 
-            {/* Lane Labels */}
-            <div
-              style={{
-                width: LABEL_W,
-                borderRight: `1px solid ${BORDER}`,
-                position: "relative",
-              }}
-            >
-              {diagramData.lanes?.map((lane) => {
-                const lines = lane.label.split("\n");
-                return (
-                  <div
-                    key={lane.id}
-                    style={{
-                      height: LANE_H,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0 15px",
-                    }}
-                  >
-                    {lines.map((ln, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          fontSize: 11,
-                          lineHeight: "1.4",
-                          fontWeight: 600,
-                          color: "#374151",
-                          textAlign: "center",
-                          fontFamily: "Inter, Segoe UI, Arial, sans-serif",
-                        }}
-                      >
-                        {ln}
-                      </span>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+            {/* Lane Labels Column */}
+            <line x1={TITLE_W + LABEL_W} y1={0} x2={TITLE_W + LABEL_W} y2={totalH} stroke={BORDER} strokeWidth={1} />
+            {diagramData.lanes?.map((lane, li) => {
+              const lines = lane.label.split("\n");
+              const cy = li * LANE_H + LANE_H / 2;
+              return (
+                <g key={lane.id}>
+                  {lines.map((ln, i) => (
+                    <text
+                      key={i}
+                      x={TITLE_W + LABEL_W / 2}
+                      y={cy + (i - (lines.length - 1) / 2) * 15}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={11}
+                      fontWeight={600}
+                      fill="#374151"
+                      fontFamily="Inter, Segoe UI, Arial, sans-serif"
+                    >
+                      {ln}
+                    </text>
+                  ))}
+                </g>
+              );
+            })}
 
-            {/* SVG Flow */}
-            <svg
-              width={Math.max(1, svgW)}
-              height={Math.max(1, svgH)}
-              style={{ background: "transparent", overflow: "visible" }}
-            >
+            {/* Flow Content - offset by title + labels */}
+            <g transform={`translate(${TITLE_W + LABEL_W}, 0)`}>
               <Defs markerId={markerId} />
               {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
               {allNodes.map((n) => {
@@ -349,8 +324,8 @@ export default function SwimlaneDiagram({
                   />
                 );
               })}
-            </svg>
-          </div>
+            </g>
+          </svg>
         </div>
       </div>
     );
