@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from './context/AuthContext'
 import AppRoutes from './AppRoutes'
+import Chatbot from './components/Chatbot'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
@@ -10,6 +11,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter basename="/agentforcex">
         <AppRoutes />
+        <Chatbot />
       </BrowserRouter>
     </AuthProvider>
   )

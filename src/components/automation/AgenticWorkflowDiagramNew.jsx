@@ -1,8 +1,14 @@
-import React, { useState, useRef, useCallback, useEffect, useId } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+} from "react";
 import {
   ZoomIn,
   ZoomOut,
-  Maximize,
   Maximize2,
   Minimize2,
   RefreshCw,
@@ -12,9 +18,10 @@ import { getProcessFlow } from "../../services/api";
 import {
   TITLE_W,
   LABEL_W,
-  LANE_H,
   NODE_W,
-  buildNodeMap,
+  LANE_H,
+  buildWorkflowLayout,
+  LANE_STYLES,
 } from "./utils/workflowUtils";
 import {
   ProcessNode,
@@ -24,9 +31,7 @@ import {
 } from "./components/WorkflowNodes";
 import { Defs, renderArrows } from "./components/WorkflowEdges";
 
-/* ═══════════════════════════════════════════════════════════
-   SAMPLE JSON  — replace with your real API/backend call
-═══════════════════════════════════════════════════════════ */
+// Sample JSON - replace with your real API/backend call
 export const sampleDiagramData = {
   title: "Process Flow Diagram",
   lanes: [],
@@ -35,22 +40,36 @@ export const sampleDiagramData = {
 
 const BORDER = "#000000";
 const WHITE = "#ffffff";
+const GRID_BG =
+  "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.10) 1px, transparent 0)";
 
-/* ═══════════════════════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════════════════════ */
 export default function SwimlaneDiagram({
   data: propData,
   suggestionId,
   forPdf = false,
 }) {
   const [diagramData, setDiagramData] = useState(propData || sampleDiagramData);
-  const [nodes, setNodes] = useState(() => buildNodeMap(diagramData));
+  const [nodes, setNodes] = useState(() => buildWorkflowLayout(diagramData).nodeMap);
   const [loading, setLoading] = useState(false);
   const lastFetchedId = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const markerId = useId().replace(/:/g, "");
+
+  const layoutBase = useMemo(
+    () => buildWorkflowLayout(diagramData),
+    [diagramData]
+  );
+  const laneMeta = layoutBase.laneMeta;
+  const svgH = laneMeta.length
+    ? laneMeta.reduce((sum, lane) => sum + lane.height, 0)
+    : LANE_H;
+  const laneBoundaries = laneMeta.length
+    ? [0, ...laneMeta.map((lane) => lane.top + lane.height)]
+    : [0, LANE_H];
+  const laneRenderMeta = laneMeta.length
+    ? laneMeta
+    : [{ id: "default", index: 0, top: 0, height: LANE_H }];
 
   // Sync internal data when propData changes
   useEffect(() => {
@@ -78,8 +97,8 @@ export default function SwimlaneDiagram({
 
   // Sync nodes when diagramData changes
   useEffect(() => {
-    setNodes(buildNodeMap(diagramData));
-  }, [diagramData]);
+    setNodes(layoutBase.nodeMap);
+  }, [layoutBase]);
 
   const [isPanning, setIsPanning] = useState(false);
   const [draggingNodeId, setDraggingNodeId] = useState(null);
@@ -91,17 +110,12 @@ export default function SwimlaneDiagram({
   const containerRef = useRef(null);
 
   const allNodes = Object.values(nodes);
-  const laneCount = diagramData.lanes?.length || 1;
-  const svgH = laneCount * LANE_H;
-
-  // Calculate width of the flow content (SVG)
   const rightmost =
     allNodes.length > 0
       ? Math.max(...allNodes.map((n) => n.cx + NODE_W / 2))
       : 500;
   const svgW = rightmost + 300;
 
-  // --- Visibility Logic ---
   const toggleAgent = useCallback((id) => {
     setOpenAgentIds((prev) => {
       const next = new Set(prev);
@@ -111,7 +125,6 @@ export default function SwimlaneDiagram({
     });
   }, []);
 
-  // --- Viewport & Drag Logic ---
   const handleZoom = (factor) => {
     setViewport((prev) => ({
       ...prev,
@@ -121,7 +134,7 @@ export default function SwimlaneDiagram({
 
   const handleReset = () => {
     setViewport({ x: 0, y: 50, zoom: 0.6 });
-    setNodes(buildNodeMap(diagramData));
+    setNodes(layoutBase.nodeMap);
     setAgentOffsets({});
   };
 
@@ -187,7 +200,6 @@ export default function SwimlaneDiagram({
     setDraggingAgentId(null);
   };
 
-  // --- Fullscreen Logic ---
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -210,7 +222,9 @@ export default function SwimlaneDiagram({
   if (loading) {
     return (
       <div
-        className={`w-full border border-slate-200 rounded-3xl flex items-center justify-center bg-slate-50 transition-all duration-300 ${isFullscreen ? "h-screen" : "h-[600px]"}`}
+        className={`w-full border border-slate-200 rounded-3xl flex items-center justify-center bg-slate-50 transition-all duration-300 ${
+          isFullscreen ? "h-screen" : "h-[600px]"
+        }`}
       >
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
@@ -222,7 +236,6 @@ export default function SwimlaneDiagram({
     );
   }
 
-  // ── PDF static render: horizontal layout matching UI, scaled to fit page ──
   if (forPdf) {
     const totalW = TITLE_W + LABEL_W + svgW;
     const totalH = svgH;
@@ -235,13 +248,35 @@ export default function SwimlaneDiagram({
         className="w-full"
         style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
       >
-        <div className="relative rounded-lg border border-slate-200 bg-white overflow-hidden">
-          <svg
-            viewBox={`0 0 ${totalW} ${totalH}`}
-            width={renderW}
-            height={renderH}
-            style={{ display: "block" }}
-            preserveAspectRatio="xMidYMid meet"
+        <div
+          style={{
+            display: "flex",
+            width: totalW,
+            height: svgH,
+            background: WHITE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 8,
+            overflow: "visible",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              width: TITLE_W,
+              background: WHITE,
+              borderRight: `1px solid ${BORDER}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              writingMode: "vertical-rl",
+              fontWeight: 700,
+              fontSize: 11,
+              color: "#111",
+              letterSpacing: "0.05em",
+              minHeight: "100%",
+              padding: "20px 0",
+              textTransform: "capitalize",
+            }}
           >
             {/* Background */}
             <rect width={totalW} height={totalH} fill={WHITE} />
@@ -264,47 +299,99 @@ export default function SwimlaneDiagram({
               {diagramData.title}
             </text>
 
-            {/* Lane Horizontal Lines */}
-            {Array.from({ length: laneCount + 1 }).map((_, i) => (
-              <line
-                key={`lane-line-${i}`}
-                x1={TITLE_W}
-                y1={i * LANE_H}
-                x2={totalW}
-                y2={i * LANE_H}
-                stroke={BORDER}
-                strokeWidth={1}
-              />
-            ))}
-
-            {/* Lane Labels Column */}
-            <line x1={TITLE_W + LABEL_W} y1={0} x2={TITLE_W + LABEL_W} y2={totalH} stroke={BORDER} strokeWidth={1} />
-            {diagramData.lanes?.map((lane, li) => {
-              const lines = lane.label.split("\n");
-              const cy = li * LANE_H + LANE_H / 2;
+          <div
+            style={{
+              display: "flex",
+              position: "relative",
+              backgroundImage: GRID_BG,
+              backgroundSize: "18px 18px",
+            }}
+          >
+            {laneRenderMeta.map((lane) => {
+              const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
               return (
-                <g key={lane.id}>
-                  {lines.map((ln, i) => (
-                    <text
-                      key={i}
-                      x={TITLE_W + LABEL_W / 2}
-                      y={cy + (i - (lines.length - 1) / 2) * 15}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={11}
-                      fontWeight={600}
-                      fill="#374151"
-                      fontFamily="Inter, Segoe UI, Arial, sans-serif"
-                    >
-                      {ln}
-                    </text>
-                  ))}
-                </g>
+                <div
+                  key={`lane-bg-pdf-${lane.id ?? lane.index}`}
+                  style={{
+                    position: "absolute",
+                    top: lane.top,
+                    left: 0,
+                    right: 0,
+                    height: lane.height,
+                    background: laneStyle.bg,
+                    pointerEvents: "none",
+                  }}
+                />
               );
             })}
 
-            {/* Flow Content - offset by title + labels */}
-            <g transform={`translate(${TITLE_W + LABEL_W}, 0)`}>
+            {laneBoundaries.map((y, i) => (
+              <div
+                key={`lane-line-pdf-${i}`}
+                style={{
+                  position: "absolute",
+                  top: y,
+                  left: 0,
+                  right: 0,
+                  height: 1,
+                  backgroundColor: BORDER,
+                  pointerEvents: "none",
+                }}
+              />
+            ))}
+
+            <div
+              style={{
+                width: LABEL_W,
+                borderRight: `1px solid ${BORDER}`,
+                position: "relative",
+              }}
+            >
+              {diagramData.lanes?.map((lane, idx) => {
+                const lines = lane.label.split("\n");
+                const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
+                const laneHeight = laneMeta[idx]?.height ?? LANE_H;
+                return (
+                  <div
+                    key={lane.id}
+                    style={{
+                      height: laneHeight,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 15px",
+                      background: laneStyle.tint,
+                      borderBottom: "1px solid rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    {lines.map((ln, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: 11,
+                          lineHeight: "1.4",
+                          fontWeight: 700,
+                          color: laneStyle.badge,
+                          textAlign: "center",
+                          fontFamily: "Manrope, Segoe UI, Arial, sans-serif",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {ln}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            <svg
+              width={svgW}
+              height={svgH}
+              style={{ background: "transparent", overflow: "visible" }}
+            >
               <Defs markerId={markerId} />
               {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
               {allNodes.map((n) => {
@@ -339,7 +426,8 @@ export default function SwimlaneDiagram({
           display: "flex",
           width: "100%",
           height: isFullscreen ? "100vh" : 600,
-          background: WHITE,
+          background:
+            "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)",
           border: isFullscreen ? "none" : `1px solid ${BORDER}`,
           borderRadius: isFullscreen ? 0 : 8,
           boxShadow: isFullscreen
@@ -359,7 +447,6 @@ export default function SwimlaneDiagram({
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
       >
-        {/* ── Floating Controls ── */}
         <div
           className="floating-controls"
           style={{
@@ -375,11 +462,7 @@ export default function SwimlaneDiagram({
         >
           {[
             { icon: ZoomIn, onClick: () => handleZoom(1.15), title: "Zoom In" },
-            {
-              icon: ZoomOut,
-              onClick: () => handleZoom(0.85),
-              title: "Zoom Out",
-            },
+            { icon: ZoomOut, onClick: () => handleZoom(0.85), title: "Zoom Out" },
             { icon: RefreshCw, onClick: handleReset, title: "Reset View" },
             {
               icon: isFullscreen ? Minimize2 : Maximize2,
@@ -399,7 +482,6 @@ export default function SwimlaneDiagram({
           ))}
         </div>
 
-        {/* ── Title Column (Far Left) ── */}
         <div
           style={{
             width: TITLE_W,
@@ -423,7 +505,6 @@ export default function SwimlaneDiagram({
           {diagramData.title}
         </div>
 
-        {/* ── Main content area (Labels + Flow) ── */}
         <div
           style={{
             flex: 1,
@@ -448,13 +529,41 @@ export default function SwimlaneDiagram({
                   : "transform 0.1s ease-out",
             }}
           >
-            {/* Dynamic Lane Horizontal Lines */}
-            {Array.from({ length: laneCount + 1 }).map((_, i) => (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: GRID_BG,
+                backgroundSize: "18px 18px",
+                opacity: 0.9,
+                pointerEvents: "none",
+              }}
+            />
+
+            {laneRenderMeta.map((lane) => {
+              const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
+              return (
+                <div
+                  key={`lane-bg-${lane.id ?? lane.index}`}
+                  style={{
+                    position: "absolute",
+                    top: lane.top,
+                    left: 0,
+                    right: -10000,
+                    height: lane.height,
+                    background: laneStyle.bg,
+                    pointerEvents: "none",
+                  }}
+                />
+              );
+            })}
+
+            {laneBoundaries.map((y, i) => (
               <div
-                key={i}
+                key={`lane-line-${i}`}
                 style={{
                   position: "absolute",
-                  top: i * LANE_H,
+                  top: y,
                   left: 0,
                   right: -10000,
                   height: 1,
@@ -466,7 +575,6 @@ export default function SwimlaneDiagram({
             ))}
 
             <div style={{ display: "flex" }}>
-              {/* ── Lane Labels Column ── */}
               <div
                 style={{
                   width: LABEL_W,
@@ -475,41 +583,57 @@ export default function SwimlaneDiagram({
                   background: "transparent",
                 }}
               >
-                {diagramData.lanes?.map((lane) => {
+                {diagramData.lanes?.map((lane, idx) => {
                   const lines = lane.label.split("\n");
+                  const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
+                  const laneHeight = laneMeta[idx]?.height ?? LANE_H;
                   return (
                     <div
                       key={lane.id}
                       style={{
-                        height: LANE_H,
+                        height: laneHeight,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
                         padding: "0 15px",
+                        background: laneStyle.tint,
+                        borderBottom: "1px solid rgba(15,23,42,0.06)",
                       }}
                     >
-                      {lines.map((ln, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            fontSize: 11,
-                            lineHeight: "1.4",
-                            fontWeight: 600,
-                            color: "#374151",
-                            textAlign: "center",
-                            fontFamily: "Inter, Segoe UI, Arial, sans-serif",
-                          }}
-                        >
-                          {ln}
-                        </span>
-                      ))}
+                      <div
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background: "rgba(255,255,255,0.85)",
+                          border: "1px solid rgba(15,23,42,0.08)",
+                          boxShadow: "0 6px 14px -8px rgba(15,23,42,0.35)",
+                        }}
+                      >
+                        {lines.map((ln, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              display: "block",
+                              fontSize: 10,
+                              lineHeight: "1.4",
+                              fontWeight: 800,
+                              color: laneStyle.badge,
+                              textAlign: "center",
+                              fontFamily: "Manrope, Segoe UI, Arial, sans-serif",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {ln}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* ── SVG Flow Area ── */}
               <svg
                 width={svgW}
                 height={svgH}
@@ -517,7 +641,6 @@ export default function SwimlaneDiagram({
               >
                 <Defs markerId={markerId} />
                 {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
-                {/* ── Nodes (on top) ── */}
                 {allNodes.map((n) => {
                   const isOpen = openAgentIds.has(n.id);
                   if (n.type === "start")
@@ -539,7 +662,6 @@ export default function SwimlaneDiagram({
                   );
                 })}
 
-                {/* ── Agent Overlays ── */}
                 {Array.from(openAgentIds).map((id) => {
                   const n = nodes[id];
                   if (!n) return null;

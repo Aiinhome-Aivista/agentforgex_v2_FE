@@ -78,7 +78,7 @@ export default function ProcessHeader({ process, activeTab, onTabChange, actions
           ))}
         </div>
 
-        {actions && <div>{actions}</div>}
+        {actions && <div className="flex items-center gap-3">{actions}</div>}
       </div>
     </div>
   )

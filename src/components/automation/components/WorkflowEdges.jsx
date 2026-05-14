@@ -13,7 +13,7 @@ export function Defs({ markerId = MARKER_ID }) {
     <defs>
       <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5"
         markerWidth="7" markerHeight="7" orient="auto">
-        <path d="M 0 0 L 10 5 L 0 10 z" fill="#444" />
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
       </marker>
     </defs>
   );
@@ -25,13 +25,13 @@ export function Seg({ x1, y1, x2, y2, label, markerId = MARKER_ID }) {
   return (
     <g>
       <line x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke="#444" strokeWidth={1.4}
+        stroke="#475569" strokeWidth={1.3}
         markerEnd={`url(#${markerId})`} fill="none" />
       {label && (
         <g transform={`translate(${mx}, ${my})`}>
-          <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" />
+          <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" stroke="rgba(15,23,42,0.08)" />
           <text textAnchor="middle" dominantBaseline="middle"
-            fontSize={8} fontWeight={900} fill="#111" letterSpacing="0.05em">
+            fontSize={8} fontWeight={900} fill="#0F172A" letterSpacing="0.05em">
             {label}
           </text>
         </g>
@@ -46,13 +46,13 @@ export function Elbow({ pts, label, markerId = MARKER_ID }) {
   const mid = pts[Math.floor(pts.length / 2)];
   return (
     <g>
-      <path d={d} fill="none" stroke="#444" strokeWidth={1.4}
+      <path d={d} fill="none" stroke="#475569" strokeWidth={1.3}
         markerEnd={`url(#${markerId})`} />
       {label && mid && (
         <g transform={`translate(${mid[0]}, ${mid[1]})`}>
-          <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" />
+          <rect x={-18} y={-7} width={36} height={14} rx={4} fill="#fff" stroke="rgba(15,23,42,0.08)" />
           <text textAnchor="middle" dominantBaseline="middle"
-            fontSize={8} fontWeight={900} fill="#111" letterSpacing="0.05em">
+            fontSize={8} fontWeight={900} fill="#0F172A" letterSpacing="0.05em">
             {label}
           </text>
         </g>
@@ -99,7 +99,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           <g key={i}>
             <Seg x1={sx1} y1={sy1} x2={sx2} y2={sy2} markerId={markerId} />
             <text x={x1 + (tx2 - x1) * 0.3} y={y1 + (ty2 - y1) * 0.3 - 5}
-              fontSize={11} fontWeight="bold" fill="#444"
+              fontSize={11} fontWeight="bold" fill="#475569"
               fontFamily="Segoe UI, Arial, sans-serif">{edgeLabel}</text>
           </g>
         );
@@ -115,7 +115,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         return (
           <g key={i}>
             <Elbow pts={[[fx, fy], [wallX, fy], [wallX, ty], [sx2, sy2]]} label={edgeLabel} markerId={markerId} />
-            <text x={fx + 8} y={fy - 6} fontSize={11} fill="#444"
+            <text x={fx + 8} y={fy - 6} fontSize={11} fill="#475569"
               fontFamily="Segoe UI, Arial, sans-serif">{edgeLabel}</text>
           </g>
         );

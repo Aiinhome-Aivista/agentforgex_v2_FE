@@ -1,7 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState ,useEffect} from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Download, Loader2, } from "lucide-react";
+import { Document, Packer, Paragraph, ImageRun } from "docx";
+import pptxgen from "pptxgenjs";
+import { Download, Loader2, FileText, Presentation, File as FileIcon, ChevronDown } from "lucide-react";
 import { PDFProvider } from "../../context/PdfContext";
 
 import AutomationTab from "../analysis/AutomationTab";
@@ -10,91 +12,189 @@ import OverviewTab from "../analysis/OverviewTab";
 
 export default function ExportPDF({ data }) {
   const [isExporting, setIsExporting] = useState(false);
+  const [showFormats, setShowFormats] = useState(false);
   const pdfRef = useRef();
+  const menuRef = useRef();
 
   const { process, steps, suggestions, erp_modules, key_insights, top_automation_targets } = data;
 
-  const handleDownload = async () => {
-    setIsExporting(true);
-    try {
-      const element = pdfRef.current;
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - (2 * margin);
-      const usableHeightMm = pageHeight - (2 * margin);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowFormats(false);
+      }
+    };
 
-      // Wait for components and charts to fully render
-      await new Promise(resolve => setTimeout(resolve, 3000));
+    if (showFormats) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showFormats]);
 
-      const atoms = element.querySelectorAll('.pdf-atomic');
-      if (atoms.length === 0) return;
+  const captureAtoms = async () => {
+    const element = pdfRef.current;
+    // Wait for components and charts to fully render
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const atoms = element.querySelectorAll('.pdf-atomic');
+    return Array.from(atoms);
+  };
 
-      let currentYMm = margin;
-      let isFirstPage = true;
+  const exportToPdf = async (atoms) => {
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - (2 * margin);
+    const usableHeightMm = pageHeight - (2 * margin);
 
-      for (let i = 0; i < atoms.length; i++) {
-        const atom = atoms[i];
+    let currentYMm = margin;
+    let isFirstPage = true;
 
-        // Capture individual atom
-        const canvas = await html2canvas(atom, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-        });
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i];
+      const canvas = await html2canvas(atom, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
 
-        const atomWidthPx = canvas.width;
-        const atomHeightPx = canvas.height;
-        const pxPerMm = atomWidthPx / contentWidth;
-        const atomHeightMm = atomHeightPx / pxPerMm;
+      const atomWidthPx = canvas.width;
+      const atomHeightPx = canvas.height;
+      const pxPerMm = atomWidthPx / contentWidth;
+      const atomHeightMm = atomHeightPx / pxPerMm;
 
-        // Aggressive safety buffer (10mm) to ensure elements far away from page edges
-        const remainingSpaceMm = pageHeight - margin - currentYMm;
+      const remainingSpaceMm = pageHeight - margin - currentYMm;
 
-        if (!isFirstPage && (atomHeightMm > remainingSpaceMm - 10)) {
-          pdf.addPage();
-          currentYMm = margin;
-        }
-
-        // Handle case where a single atom is taller than the whole page (e.g. huge table)
-        if (atomHeightMm > usableHeightMm) {
-          let yOffsetPx = 0;
-          while (yOffsetPx < atomHeightPx) {
-            if (yOffsetPx > 0) {
-              pdf.addPage();
-              currentYMm = margin;
-            }
-
-            const sliceHeightPx = Math.min(usableHeightMm * pxPerMm, atomHeightPx - yOffsetPx);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = atomWidthPx;
-            sliceCanvas.height = sliceHeightPx;
-            const ctx = sliceCanvas.getContext('2d');
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            ctx.drawImage(canvas, 0, yOffsetPx, atomWidthPx, sliceHeightPx, 0, 0, atomWidthPx, sliceHeightPx);
-
-            const sliceImgData = sliceCanvas.toDataURL("image/png");
-            pdf.addImage(sliceImgData, "PNG", margin, currentYMm, contentWidth, sliceHeightPx / pxPerMm);
-
-            yOffsetPx += (usableHeightMm * pxPerMm);
-            currentYMm += (sliceHeightPx / pxPerMm);
-          }
-        } else {
-          // Standard size atom: just add it
-          const imgData = canvas.toDataURL("image/png");
-          pdf.addImage(imgData, "PNG", margin, currentYMm, contentWidth, atomHeightMm);
-          currentYMm += atomHeightMm + 5; // 5mm gap between atoms
-        }
-
-        isFirstPage = false;
+      if (!isFirstPage && (atomHeightMm > remainingSpaceMm - 10)) {
+        pdf.addPage();
+        currentYMm = margin;
       }
 
-      pdf.save(`${process.title?.replace(/\s+/g, "_") || "Process"}_Report.pdf`);
+      if (atomHeightMm > usableHeightMm) {
+        let yOffsetPx = 0;
+        while (yOffsetPx < atomHeightPx) {
+          if (yOffsetPx > 0) {
+            pdf.addPage();
+            currentYMm = margin;
+          }
+          const sliceHeightPx = Math.min(usableHeightMm * pxPerMm, atomHeightPx - yOffsetPx);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = atomWidthPx;
+          sliceCanvas.height = sliceHeightPx;
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(canvas, 0, yOffsetPx, atomWidthPx, sliceHeightPx, 0, 0, atomWidthPx, sliceHeightPx);
+
+          const sliceImgData = sliceCanvas.toDataURL("image/png");
+          pdf.addImage(sliceImgData, "PNG", margin, currentYMm, contentWidth, sliceHeightPx / pxPerMm);
+          yOffsetPx += (usableHeightMm * pxPerMm);
+          currentYMm += (sliceHeightPx / pxPerMm);
+        }
+      } else {
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", margin, currentYMm, contentWidth, atomHeightMm);
+        currentYMm += atomHeightMm + 5;
+      }
+      isFirstPage = false;
+    }
+    pdf.save(`${process.title?.replace(/\s+/g, "_") || "Process"}_Report.pdf`);
+  };
+
+  const exportToWord = async (atoms) => {
+    const children = [];
+
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i];
+      const canvas = await html2canvas(atom, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 600; // Standard Word page width in points roughly
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      children.push(
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: imgData,
+              transformation: {
+                width: imgWidth,
+                height: imgHeight,
+              },
+            }),
+          ],
+        })
+      );
+    }
+
+    const doc = new Document({
+      sections: [{
+        children: children,
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${process.title?.replace(/\s+/g, "_") || "Process"}_Report.docx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportToPowerPoint = async (atoms) => {
+    const pptx = new pptxgen();
+
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i];
+      const canvas = await html2canvas(atom, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const slide = pptx.addSlide();
+      
+      // Add image to slide, fitting width
+      slide.addImage({
+        data: imgData,
+        x: 0.5,
+        y: 0.5,
+        w: 9, // pptxgenjs uses inches by default
+        h: (canvas.height * 9) / canvas.width,
+        sizing: { type: 'contain', w: 9, h: 5 }
+      });
+    }
+
+    await pptx.writeFile({ fileName: `${process.title?.replace(/\s+/g, "_") || "Process"}_Report.pptx` });
+  };
+
+  const handleDownload = async (format) => {
+    setIsExporting(true);
+    setShowFormats(false);
+    try {
+      const atoms = await captureAtoms();
+      if (atoms.length === 0) return;
+
+      if (format === "pdf") {
+        await exportToPdf(atoms);
+      } else if (format === "word") {
+        await exportToWord(atoms);
+      } else if (format === "pptx") {
+        await exportToPowerPoint(atoms);
+      }
     } catch (error) {
-      console.error("Atomic PDF Export failed:", error);
+      console.error(`${format} Export failed:`, error);
     } finally {
       setIsExporting(false);
     }
@@ -102,24 +202,51 @@ export default function ExportPDF({ data }) {
 
   return (
     <>
-      <button
-        onClick={handleDownload}
-        disabled={isExporting}
-        className="btn-primary px-4 py-2 h-10 shadow-lg shadow-brand-500/20"
-        title="Export Analysis to PDF"
-      >
-        {isExporting ? (
-          <>
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => setShowFormats(!showFormats)}
+          disabled={isExporting}
+          className="btn-primary px-3 py-1.5 shadow-lg shadow-brand-500/20 flex items-center gap-2 text-xs font-bold uppercase tracking-widest rounded-md"
+          title="Export Analysis"
+        >
+          {isExporting ? (
             <Loader2 size={18} className="animate-spin text-black" />
+          ) : (
+            <>
+              <Download size={18} className="text-black" />
+              <ChevronDown size={14} className="text-black opacity-50" />
+            </>
+          )}
+        </button>
 
-          </>
-        ) : (
-          <>
-            <Download size={18} className="text-black" />
-
-          </>
+        {showFormats && (
+          <div className="absolute right-0 top-10 w-48 bg-[#0e0e10] border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="p-2 flex flex-col gap-1">
+              <button
+                onClick={() => handleDownload("pdf")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <FileIcon size={14} className="text-red-500" />
+                <span>Export as PDF</span>
+              </button>
+              <button
+                onClick={() => handleDownload("word")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <FileText size={14} className="text-blue-500" />
+                <span>Export as Word</span>
+              </button>
+              <button
+                onClick={() => handleDownload("pptx")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <Presentation size={14} className="text-orange-500" />
+                <span>Export as PPT</span>
+              </button>
+            </div>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Hidden container for PDF rendering */}
       <div

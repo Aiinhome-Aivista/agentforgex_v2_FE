@@ -1,54 +1,64 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Layers, Trash2, Loader2, FileText, ChevronRight, Plus,
-  AlertCircle, RefreshCw,
-} from 'lucide-react'
-import { listWorkspaces, deleteWorkspace } from '../services/workspaceApi'
+  Layers,
+  Trash2,
+  Loader2,
+  FileText,
+  ChevronRight,
+  Plus,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { listWorkspaces, deleteWorkspace } from "../services/workspaceApi";
 
 export default function WorkspacesPage() {
-  const navigate = useNavigate()
-  const [items, setItems] = useState([])
-  const [quota, setQuota] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [pendingId, setPendingId] = useState(null)
-  const [confirmId, setConfirmId] = useState(null)
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [quota, setQuota] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pendingId, setPendingId] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
 
   const reload = async () => {
-    setLoading(true); setError('')
+    setLoading(true);
+    setError("");
     try {
-      const r = await listWorkspaces()
-      setItems(r?.data || [])
-      setQuota(r?.quota || null)
+      const r = await listWorkspaces();
+      setItems(r?.data || []);
+      setQuota(r?.quota || null);
     } catch (e) {
-      setError(e?.message || 'Could not load workspaces')
+      setError(e?.message || "Could not load workspaces");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => { reload() }, [])
+  useEffect(() => {
+    reload();
+  }, []);
 
   const handleDelete = async (id) => {
-    setPendingId(id); setError('')
+    setPendingId(id);
+    setError("");
     try {
-      const r = await deleteWorkspace(id)
+      const r = await deleteWorkspace(id);
       if (r?.status) {
-        setItems(prev => prev.filter(x => x.id !== id))
-        if (r.quota) setQuota(r.quota)
+        setItems((prev) => prev.filter((x) => x.id !== id));
+        if (r.quota) setQuota(r.quota);
       } else {
-        setError(r?.message || 'Could not delete workspace')
+        setError(r?.message || "Could not delete workspace");
       }
     } catch (e) {
-      setError(e?.message || 'Could not delete workspace')
+      setError(e?.message || "Could not delete workspace");
     } finally {
-      setPendingId(null)
-      setConfirmId(null)
+      setPendingId(null);
+      setConfirmId(null);
     }
-  }
+  };
 
-  const atCap = quota && quota.allowed != null && quota.used >= quota.allowed
+  const atCap = quota && quota.allowed != null && quota.used >= quota.allowed;
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
@@ -68,7 +78,7 @@ export default function WorkspacesPage() {
                      px-2 py-1 rounded"
           title="Refresh"
         >
-          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           Refresh
         </button>
       </div>
@@ -83,8 +93,10 @@ export default function WorkspacesPage() {
             <p className="text-sm font-bold text-white/90 mt-0.5 capitalize">
               {quota.plan_code}
               {!quota.subscription_active && (
-                <span className="ml-2 text-[10px] uppercase tracking-widest
-                                 text-white/30 font-bold">
+                <span
+                  className="ml-2 text-[10px] uppercase tracking-widest
+                                 text-white/30 font-bold"
+                >
                   (no active subscription)
                 </span>
               )}
@@ -94,10 +106,15 @@ export default function WorkspacesPage() {
             <p className="text-[10px] uppercase tracking-widest font-black text-white/30">
               Used
             </p>
-            <p className={`text-2xl font-black tabular-nums mt-0.5
-                           ${atCap ? 'text-red-400' : 'text-white/90'}`}>
+            <p
+              className={`text-2xl font-black tabular-nums mt-0.5
+                           ${atCap ? "text-red-400" : "text-white/90"}`}
+            >
               {quota.used}
-              <span className="text-white/30 text-base"> / {quota.allowed}</span>
+              <span className="text-white/30 text-base">
+                {" "}
+                / {quota.allowed}
+              </span>
             </p>
             {quota.extra_workspaces > 0 && (
               <p className="text-[10px] uppercase tracking-widest text-white/30 mt-0.5">
@@ -107,7 +124,7 @@ export default function WorkspacesPage() {
           </div>
           {atCap && (
             <button
-              onClick={() => navigate('/account')}
+              onClick={() => navigate("/account")}
               className="ml-4 inline-flex items-center gap-1 text-[11px]
                          uppercase tracking-widest font-bold rounded-md
                          bg-brand-500 hover:bg-brand-600 text-white px-3 py-2"
@@ -119,9 +136,11 @@ export default function WorkspacesPage() {
       )}
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-500/30
+        <div
+          className="mb-4 rounded-md border border-red-500/30
                         bg-red-500/10 px-3 py-2 text-xs text-red-300
-                        flex items-start gap-2">
+                        flex items-start gap-2"
+        >
           <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           <span>{error}</span>
         </div>
@@ -140,7 +159,7 @@ export default function WorkspacesPage() {
             <span className="text-white/40"> "Save to Workspace"</span>.
           </p>
           <button
-            onClick={() => navigate('/home')}
+            onClick={() => navigate("/home")}
             className="mt-4 inline-flex items-center gap-1.5 text-[11px]
                        uppercase tracking-widest font-bold text-brand-400
                        hover:text-brand-300"
@@ -160,16 +179,22 @@ export default function WorkspacesPage() {
                 onClick={() => navigate(`/workspaces/${w.id}`)}
                 className="flex-1 min-w-0 cursor-pointer pr-4"
               >
-                <p className="font-bold text-white/90 truncate uppercase
-                              tracking-tight">
+                <p
+                  className="font-bold text-white/90 truncate uppercase
+                              tracking-tight"
+                >
                   {w.name}
                 </p>
-                <p className="text-[10px] uppercase font-black tracking-widest
-                              text-white/30 mt-1">
+                <p
+                  className="text-[10px] uppercase font-black tracking-widest
+                              text-white/30 mt-1"
+                >
                   <FileText size={10} className="inline mr-1 -mt-0.5" />
-                  {w.has_analysis ? 'Saved analysis' : 'Empty'}
-                  {w.data_size_mb ? ` · ${Number(w.data_size_mb).toFixed(2)} MB` : ''}
-                  {' · '}
+                  {w.has_analysis ? "Saved analysis" : "Empty"}
+                  {w.data_size_mb
+                    ? ` · ${Number(w.data_size_mb).toFixed(2)} MB`
+                    : ""}
+                  {" · "}
                   {new Date(w.updated_at || w.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -193,22 +218,24 @@ export default function WorkspacesPage() {
                                  text-white inline-flex items-center gap-1.5
                                  disabled:opacity-50"
                     >
-                      {pendingId === w.id
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : <Trash2 size={12} />}
+                      {pendingId === w.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={12} />
+                      )}
                       Confirm
                     </button>
                   </>
                 ) : (
                   <>
-                    <button
+                    {/* <button
                       onClick={() => navigate(`/workspaces/${w.id}`)}
                       className="text-[11px] uppercase font-bold tracking-widest
                                  px-3 py-1.5 rounded border border-white/10
                                  bg-white/[0.04] hover:bg-white/[0.08] text-white/80"
                     >
                       Open
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => setConfirmId(w.id)}
                       title="Delete workspace"
@@ -225,5 +252,5 @@ export default function WorkspacesPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
