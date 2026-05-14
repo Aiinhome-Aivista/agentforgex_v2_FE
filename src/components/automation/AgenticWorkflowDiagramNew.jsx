@@ -20,6 +20,7 @@ import {
   LABEL_W,
   NODE_W,
   LANE_H,
+  COLORS,
   buildWorkflowLayout,
   LANE_STYLES,
 } from "./utils/workflowUtils";
@@ -38,10 +39,8 @@ export const sampleDiagramData = {
   flow: [],
 };
 
-const BORDER = "#000000";
-const WHITE = "#ffffff";
 const GRID_BG =
-  "radial-gradient(circle at 1px 1px, rgba(15,23,42,0.10) 1px, transparent 0)";
+  "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.12) 1px, transparent 0)";
 
 export default function SwimlaneDiagram({
   data: propData,
@@ -219,23 +218,29 @@ export default function SwimlaneDiagram({
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
+  /* ═══════════════════════════════════════════════════════
+     LOADING STATE
+  ═══════════════════════════════════════════════════════ */
   if (loading) {
     return (
       <div
-        className={`w-full border border-slate-200 rounded-3xl flex items-center justify-center bg-slate-50 transition-all duration-300 ${
+        className={`w-full border border-gray-200 rounded-2xl flex items-center justify-center bg-gray-50 transition-all duration-300 ${
           isFullscreen ? "h-screen" : "h-[600px]"
         }`}
       >
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-          <p className="text-sm font-medium text-slate-500 tracking-tight">
-            Loading automation workflow...
+          <Loader2 className="w-7 h-7 text-indigo-400 animate-spin" />
+          <p className="text-sm font-medium text-gray-400 tracking-tight">
+            Loading workflow…
           </p>
         </div>
       </div>
     );
   }
 
+  /* ═══════════════════════════════════════════════════════
+     PDF MODE — static render (no interactivity)
+  ═══════════════════════════════════════════════════════ */
   if (forPdf) {
     const totalW = TITLE_W + LABEL_W + svgW;
     return (
@@ -248,28 +253,29 @@ export default function SwimlaneDiagram({
             display: "flex",
             width: totalW,
             height: svgH,
-            background: WHITE,
-            border: `1px solid ${BORDER}`,
+            background: "#FAFBFC",
+            border: `1px solid ${COLORS.lane_border}`,
             borderRadius: 8,
             overflow: "visible",
             position: "relative",
           }}
         >
+          {/* Title column */}
           <div
             style={{
               width: TITLE_W,
-              background: WHITE,
-              borderRight: `1px solid ${BORDER}`,
+              background: "#FAFBFC",
+              borderRight: `1px solid ${COLORS.lane_border}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               writingMode: "vertical-rl",
-              fontWeight: 700,
-              fontSize: 11,
-              color: "#111",
-              letterSpacing: "0.05em",
+              fontWeight: 600,
+              fontSize: 10,
+              color: COLORS.label_text,
+              letterSpacing: "0.04em",
               minHeight: "100%",
-              padding: "20px 0",
+              padding: "16px 0",
               textTransform: "capitalize",
             }}
           >
@@ -281,9 +287,10 @@ export default function SwimlaneDiagram({
               display: "flex",
               position: "relative",
               backgroundImage: GRID_BG,
-              backgroundSize: "18px 18px",
+              backgroundSize: "20px 20px",
             }}
           >
+            {/* Lane backgrounds */}
             {laneRenderMeta.map((lane) => {
               const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
               return (
@@ -302,6 +309,7 @@ export default function SwimlaneDiagram({
               );
             })}
 
+            {/* Lane separator lines */}
             {laneBoundaries.map((y, i) => (
               <div
                 key={`lane-line-pdf-${i}`}
@@ -311,22 +319,22 @@ export default function SwimlaneDiagram({
                   left: 0,
                   right: 0,
                   height: 1,
-                  backgroundColor: BORDER,
+                  backgroundColor: COLORS.lane_border,
                   pointerEvents: "none",
                 }}
               />
             ))}
 
+            {/* Lane labels */}
             <div
               style={{
                 width: LABEL_W,
-                borderRight: `1px solid ${BORDER}`,
+                borderRight: `1px solid ${COLORS.lane_border}`,
                 position: "relative",
               }}
             >
               {diagramData.lanes?.map((lane, idx) => {
                 const lines = lane.label.split("\n");
-                const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
                 const laneHeight = laneMeta[idx]?.height ?? LANE_H;
                 return (
                   <div
@@ -337,23 +345,21 @@ export default function SwimlaneDiagram({
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      padding: "0 15px",
-                      background: laneStyle.tint,
-                      borderBottom: "1px solid rgba(0,0,0,0.06)",
+                      padding: "0 12px",
+                      borderBottom: `1px solid ${COLORS.lane_border}`,
                     }}
                   >
                     {lines.map((ln, i) => (
                       <span
                         key={i}
                         style={{
-                          fontSize: 11,
+                          fontSize: 10,
                           lineHeight: "1.4",
-                          fontWeight: 700,
-                          color: laneStyle.badge,
+                          fontWeight: 600,
+                          color: COLORS.label_text,
                           textAlign: "center",
-                          fontFamily: "Manrope, Segoe UI, Arial, sans-serif",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
+                          fontFamily: "Inter, Segoe UI, Arial, sans-serif",
+                          letterSpacing: "0.02em",
                         }}
                       >
                         {ln}
@@ -364,6 +370,7 @@ export default function SwimlaneDiagram({
               })}
             </div>
 
+            {/* SVG canvas */}
             <svg
               width={svgW}
               height={svgH}
@@ -395,6 +402,9 @@ export default function SwimlaneDiagram({
     );
   }
 
+  /* ═══════════════════════════════════════════════════════
+     INTERACTIVE MODE — main render
+  ═══════════════════════════════════════════════════════ */
   return (
     <div className="w-full">
       <div
@@ -403,13 +413,12 @@ export default function SwimlaneDiagram({
           display: "flex",
           width: "100%",
           height: isFullscreen ? "100vh" : 600,
-          background:
-            "linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)",
-          border: isFullscreen ? "none" : `1px solid ${BORDER}`,
-          borderRadius: isFullscreen ? 0 : 8,
+          background: "#F8FAFC",
+          border: isFullscreen ? "none" : `1px solid ${COLORS.lane_border}`,
+          borderRadius: isFullscreen ? 0 : 12,
           boxShadow: isFullscreen
             ? "none"
-            : "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05)",
+            : "0 4px 16px -4px rgba(0,0,0,0.06)",
           overflow: "hidden",
           position: "relative",
           cursor:
@@ -424,16 +433,17 @@ export default function SwimlaneDiagram({
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
       >
+        {/* ── Floating Controls ──────────────────────── */}
         <div
           className="floating-controls"
           style={{
             position: "absolute",
-            top: 20,
-            right: 20,
+            top: 16,
+            right: 16,
             zIndex: 100,
             display: "flex",
             flexDirection: "column",
-            gap: 8,
+            gap: 6,
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -452,42 +462,45 @@ export default function SwimlaneDiagram({
               onClick={btn.onClick}
               title={btn.title}
               disabled={false}
-              className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-lg hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all text-slate-700"
+              className="w-9 h-9 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 transition-all text-gray-500 hover:text-gray-700"
             >
-              <btn.icon size={18} className={btn.spin ? "animate-spin" : ""} />
+              <btn.icon size={16} />
             </button>
           ))}
         </div>
 
+        {/* ── Title Column (vertical) ────────────────── */}
         <div
           style={{
             width: TITLE_W,
-            background: WHITE,
-            borderRight: `1px solid ${BORDER}`,
+            background: "#FAFBFC",
+            borderRight: `1px solid ${COLORS.lane_border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             writingMode: "vertical-rl",
-            fontWeight: 700,
-            fontSize: 11,
-            color: "#111",
-            letterSpacing: "0.05em",
+            fontWeight: 600,
+            fontSize: 10,
+            color: COLORS.label_text,
+            letterSpacing: "0.04em",
             minHeight: "100%",
-            padding: "20px 0",
+            padding: "16px 0",
             textTransform: "capitalize",
             zIndex: 10,
             position: "relative",
+            fontFamily: "Inter, 'Segoe UI', system-ui, sans-serif",
           }}
         >
           {diagramData.title}
         </div>
 
+        {/* ── Main Canvas Area ────────────────────────── */}
         <div
           style={{
             flex: 1,
             position: "relative",
             display: "flex",
-            background: WHITE,
+            background: "#F8FAFC",
             overflow: "hidden",
           }}
         >
@@ -506,17 +519,19 @@ export default function SwimlaneDiagram({
                   : "transform 0.1s ease-out",
             }}
           >
+            {/* Dot grid background */}
             <div
               style={{
                 position: "absolute",
                 inset: 0,
                 backgroundImage: GRID_BG,
-                backgroundSize: "18px 18px",
-                opacity: 0.9,
+                backgroundSize: "20px 20px",
+                opacity: 0.8,
                 pointerEvents: "none",
               }}
             />
 
+            {/* Lane backgrounds — ultra-subtle alternating bands */}
             {laneRenderMeta.map((lane) => {
               const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
               return (
@@ -535,6 +550,7 @@ export default function SwimlaneDiagram({
               );
             })}
 
+            {/* Lane separator lines — thin dashed */}
             {laneBoundaries.map((y, i) => (
               <div
                 key={`lane-line-${i}`}
@@ -544,25 +560,31 @@ export default function SwimlaneDiagram({
                   left: 0,
                   right: -10000,
                   height: 1,
-                  backgroundColor: BORDER,
+                  background: `repeating-linear-gradient(
+                    90deg,
+                    ${COLORS.lane_border} 0px,
+                    ${COLORS.lane_border} 6px,
+                    transparent 6px,
+                    transparent 12px
+                  )`,
                   pointerEvents: "none",
-                  opacity: 1,
+                  opacity: 0.8,
                 }}
               />
             ))}
 
             <div style={{ display: "flex" }}>
+              {/* ── Lane Labels ─────────────────────── */}
               <div
                 style={{
                   width: LABEL_W,
-                  borderRight: `1px solid ${BORDER}`,
+                  borderRight: `1px dashed ${COLORS.lane_border}`,
                   position: "relative",
                   background: "transparent",
                 }}
               >
                 {diagramData.lanes?.map((lane, idx) => {
                   const lines = lane.label.split("\n");
-                  const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
                   const laneHeight = laneMeta[idx]?.height ?? LANE_H;
                   return (
                     <div
@@ -573,18 +595,16 @@ export default function SwimlaneDiagram({
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        padding: "0 15px",
-                        background: laneStyle.tint,
-                        borderBottom: "1px solid rgba(15,23,42,0.06)",
+                        padding: "0 12px",
+                        borderBottom: `1px dashed ${COLORS.lane_border}`,
                       }}
                     >
                       <div
                         style={{
-                          padding: "6px 10px",
-                          borderRadius: 999,
-                          background: "rgba(255,255,255,0.85)",
-                          border: "1px solid rgba(15,23,42,0.08)",
-                          boxShadow: "0 6px 14px -8px rgba(15,23,42,0.35)",
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          background: "rgba(255,255,255,0.7)",
+                          border: `1px solid ${COLORS.lane_border}`,
                         }}
                       >
                         {lines.map((ln, i) => (
@@ -594,12 +614,11 @@ export default function SwimlaneDiagram({
                               display: "block",
                               fontSize: 10,
                               lineHeight: "1.4",
-                              fontWeight: 800,
-                              color: laneStyle.badge,
+                              fontWeight: 600,
+                              color: COLORS.label_text,
                               textAlign: "center",
-                              fontFamily: "Manrope, Segoe UI, Arial, sans-serif",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.08em",
+                              fontFamily: "Inter, 'Segoe UI', system-ui, sans-serif",
+                              letterSpacing: "0.02em",
                             }}
                           >
                             {ln}
@@ -611,6 +630,7 @@ export default function SwimlaneDiagram({
                 })}
               </div>
 
+              {/* ── SVG Canvas ──────────────────────── */}
               <svg
                 width={svgW}
                 height={svgH}

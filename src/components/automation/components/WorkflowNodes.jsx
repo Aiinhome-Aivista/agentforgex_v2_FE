@@ -1,25 +1,29 @@
 import React, { useState } from "react";
 import { GitBranch, Bot, Layers, CheckCircle } from "lucide-react";
-import { 
-  COLORS, 
-  NODE_W, 
-  NODE_H, 
-  START_R, 
-  DIAMOND_S, 
-  MARKER_ID, 
-  wrapText 
+import {
+  COLORS,
+  NODE_W,
+  NODE_H,
+  START_R,
+  DIAMOND_S,
+  MARKER_ID,
+  LANE_ACCENTS,
+  wrapText,
 } from "../utils/workflowUtils";
 
+/* ═══════════════════════════════════════════════════════════
+   PROCESS NODE — Clean card with colored left accent bar
+═══════════════════════════════════════════════════════════ */
 export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const agentInfo = n.agentInfo;
-  const accent = agentInfo?.accentColor || COLORS[n.color] || COLORS.blue;
-  const bg = accent + "12";
-  const iconColor = agentInfo ? accent : COLORS.green;
+  const laneAccent = LANE_ACCENTS[n.laneIndex % LANE_ACCENTS.length];
   const lines = wrapText(n.label);
   const x = n.cx - NODE_W / 2;
   const y = n.cy - NODE_H / 2;
+  const rx = 8;
+  const barW = 4;
 
   return (
     <g
@@ -27,112 +31,121 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
       data-node-id={n.id}
       onMouseDown={onDragStart}
     >
-      {/* Soft Shadow */}
-      <rect x={x + 2} y={y + 2} width={NODE_W} height={NODE_H} rx={14}
-        fill="rgba(0,0,0,0.06)" />
+      {/* Subtle drop shadow */}
+      <rect
+        x={x + 1} y={y + 2}
+        width={NODE_W} height={NODE_H} rx={rx}
+        fill="rgba(0,0,0,0.05)"
+      />
 
-      {/* Main Card */}
-      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={16}
-        fill="#ffffff" stroke={accent + "35"} strokeWidth={1} />
-      {/* Subtle tint overlay */}
-      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={16}
-        fill={bg} />
+      {/* Main card — white fill, soft border */}
+      <rect
+        x={x} y={y}
+        width={NODE_W} height={NODE_H} rx={rx}
+        fill={COLORS.node_bg}
+        stroke={laneAccent.accent + "30"}
+        strokeWidth={1}
+      />
 
-      {/* Top Accent Strip */}
-      <rect x={x} y={y} width={NODE_W} height={6} rx={16}
-        fill={accent} />
+      {/* Subtle tinted background */}
+      <rect
+        x={x} y={y}
+        width={NODE_W} height={NODE_H} rx={rx}
+        fill={laneAccent.node_tint}
+      />
 
-            {/* Left Accent Bar */}
-            <path d={`M ${x + 8} ${y + 6}
-          H ${x + 6}
-          A 6 6 0 0 0 ${x} ${y + 12}
-          V ${y + NODE_H - 12}
-          A 6 6 0 0 0 ${x + 6} ${y + NODE_H - 6}
-          H ${x + 8} Z`}
-        fill={accent} />
+      {/* Left accent bar */}
+      <rect
+        x={x} y={y + 6}
+        width={barW} height={NODE_H - 12} rx={2}
+        fill={laneAccent.node_bar}
+      />
 
-      {/* Icon Container */}
-      <rect x={x + 18} y={n.cy - 16} width={32} height={32} rx={10}
-        fill="#ffffff" stroke={accent + "30"} strokeWidth={0.8} />
-
-      {/* Database/Process Icon */}
-      <g transform={`translate(${x + 24}, ${n.cy - 10})`} fill="none" stroke={iconColor} strokeWidth={1.6}>
-        <ellipse cx="10" cy="5" rx="7" ry="3" />
-        <path d="M 3 5 v 8 c 0 1.65 3.13 3 7 3 s 7 -1.35 7 -3 v -8" />
-      </g>
-
-      {/* Text Content */}
-      <g transform={`translate(${x + 62}, ${n.cy})`}>
+      {/* Text — left-aligned after accent bar */}
+      <g transform={`translate(${x + barW + 14}, ${n.cy})`}>
         {lines.map((ln, i) => (
-          <text key={i} x={0}
-            y={(i - (lines.length - 1) / 2) * 16}
-            textAnchor="start" dominantBaseline="middle"
-            fill="#0F172A" fontSize={11.5} fontWeight={700}
-            fontFamily="Manrope, Segoe UI, sans-serif">{ln}</text>
+          <text
+            key={i}
+            x={0}
+            y={(i - (lines.length - 1) / 2) * 15}
+            textAnchor="start"
+            dominantBaseline="middle"
+            fill={COLORS.node_text}
+            fontSize={11}
+            fontWeight={600}
+            fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
+          >
+            {ln}
+          </text>
         ))}
       </g>
 
-      {/* Interactive Badge Area - Only if Agentic Info exists */}
+      {/* Agent badge — subtle indicator */}
       {agentInfo && (
         <foreignObject
-          x={x + NODE_W - 18}
-          y={y - 18}
+          x={x + NODE_W - 14}
+          y={y - 14}
           width={300}
           height={350}
           style={{ overflow: "visible", pointerEvents: "none", userSelect: "none" }}
         >
           <div style={{ position: "relative", pointerEvents: "all" }}>
-            {/* Badge Icon */}
+            {/* Badge dot */}
             <div
-              className={`w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-emerald-500 transition-all duration-500 cursor-pointer hover:scale-110 active:scale-95 ${isOpen ? "rotate-90 bg-emerald-50" : ""}`}
+              className={`w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 ${isOpen ? "ring-2 ring-offset-1" : ""}`}
+              style={{
+                borderColor: laneAccent.accent + "60",
+                borderWidth: 1.5,
+                ...(isOpen ? { ringColor: laneAccent.accent } : {}),
+              }}
               onClick={toggleAgent}
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >
-              <GitBranch size={16} className="text-emerald-600 stroke-[2.5]" />
+              <GitBranch size={13} style={{ color: laneAccent.accent }} className="stroke-[2]" />
             </div>
 
-            {/* Rich Agent Card Tooltip */}
+            {/* Agent tooltip card */}
             <div
-              className={`absolute bottom-[120%] right-0 mb-4 w-72 bg-white rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-200 overflow-hidden transition-all duration-500 z-[110] origin-bottom-right ${showTooltip ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-4"}`}
-              style={{ pointerEvents: showTooltip ? "auto" : "none" }}
+              className={`absolute bottom-[120%] right-0 mb-3 w-64 bg-white rounded-xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-200 overflow-hidden transition-all duration-300 z-[110] origin-bottom-right ${showTooltip ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-3 pointer-events-none"}`}
             >
-              {/* Card Header - Now Blue as requested */}
+              {/* Header */}
               <div
-                className="text-white p-4 flex items-center gap-3"
-                style={{
-                  background: `linear-gradient(135deg, ${COLORS.blue}, #2563eb)`
-                }}
+                className="text-white p-3 flex items-center gap-2.5"
+                style={{ background: `linear-gradient(135deg, ${laneAccent.accent}, ${laneAccent.accent}dd)` }}
               >
-                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                  <Bot size={20} className="stroke-[2.5]" />
+                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+                  <Bot size={16} className="stroke-[2]" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{agentInfo.type}</span>
-                  <span className="font-extrabold text-sm tracking-tight">{agentInfo.title}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">
+                    {agentInfo.type}
+                  </span>
+                  <span className="font-bold text-xs tracking-tight">
+                    {agentInfo.title}
+                  </span>
                 </div>
               </div>
 
-              {/* Card Content */}
-              <div className="p-4 bg-slate-50/50 backdrop-blur-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <Layers size={14} className="text-slate-400" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Key Tasks</span>
+              {/* Content */}
+              <div className="p-3 bg-gray-50/50">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Layers size={12} className="text-gray-400" />
+                  <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">
+                    Key Tasks
+                  </span>
                 </div>
-                <ul className="space-y-2.5">
+                <ul className="space-y-1.5">
                   {(agentInfo.tasks || []).map((task, i) => (
-                    <li key={i} className="flex items-start gap-3 group/item">
-                      <CheckCircle size={14} className="text-emerald-500 mt-0.5" />
-                      <span className="text-[11px] font-semibold text-slate-600 leading-relaxed group-hover/item:text-slate-900 transition-colors">
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle size={12} className="text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-[10px] font-medium text-gray-600 leading-snug">
                         {task}
                       </span>
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {/* Tooltip Arrow */}
-              <div className="absolute top-full right-4 -mt-1 border-[10px] border-transparent border-t-white" />
             </div>
           </div>
         </foreignObject>
@@ -141,94 +154,180 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   START NODE — Green rounded pill with "Start" label
+═══════════════════════════════════════════════════════════ */
 export function StartNode({ n, onDragStart }) {
-  return (
-    <circle
-      cx={n.cx} cy={n.cy} r={START_R}
-      data-node-id={n.id}
-      onMouseDown={onDragStart}
-      className="node-group cursor-grab active:cursor-grabbing"
-      fill={COLORS.pink} stroke="rgba(0,0,0,0.08)" strokeWidth={0.8} />
-  );
-}
+  const w = START_R * 2.4;
+  const h = START_R * 1.3;
+  const rx = h / 2;
 
-export function DiamondNode({ n, onDragStart }) {
-  const { cx, cy } = n;
-  const s = DIAMOND_S;
   return (
     <g
       data-node-id={n.id}
       onMouseDown={onDragStart}
       className="node-group cursor-grab active:cursor-grabbing"
     >
-      {/* Outer Glow effect - simple approach using a larger polygon */}
-      <polygon
-        points={`${cx},${cy - s - 4} ${cx + s + 4},${cy} ${cx},${cy + s + 4} ${cx - s - 4},${cy}`}
-        fill="rgba(234, 179, 8, 0.15)" />
+      {/* Subtle shadow */}
+      <rect
+        x={n.cx - w / 2 + 1} y={n.cy - h / 2 + 1.5}
+        width={w} height={h} rx={rx}
+        fill="rgba(0,0,0,0.04)"
+      />
 
-      <polygon
-        points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
-        fill={COLORS.yellow} stroke="rgba(0,0,0,0.1)" strokeWidth={0.8} />
+      {/* Pill shape */}
+      <rect
+        x={n.cx - w / 2} y={n.cy - h / 2}
+        width={w} height={h} rx={rx}
+        fill={COLORS.start_fill}
+        stroke={COLORS.start_stroke}
+        strokeWidth={1.5}
+      />
 
-      <text x={cx} y={cy - s - 10} textAnchor="middle"
-        fill="#1F2937" fontSize={11} fontWeight={800} fontFamily="Inter, Segoe UI, sans-serif"
-        pointerEvents="none"
+      {/* "Start" label */}
+      <text
+        x={n.cx} y={n.cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={COLORS.start_text}
+        fontSize={12}
+        fontWeight={700}
+        fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
       >
-        {n.label}
+        Start
       </text>
     </g>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════
+   DIAMOND NODE — Lavender/indigo decision diamond
+═══════════════════════════════════════════════════════════ */
+export function DiamondNode({ n, onDragStart }) {
+  const { cx, cy } = n;
+  const s = DIAMOND_S;
+
+  const lines = wrapText(n.label, 14);
+
+  return (
+    <g
+      data-node-id={n.id}
+      onMouseDown={onDragStart}
+      className="node-group cursor-grab active:cursor-grabbing"
+    >
+      {/* Diamond shape */}
+      <polygon
+        points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
+        fill={COLORS.decision_fill}
+        stroke={COLORS.decision_stroke}
+        strokeWidth={1.5}
+      />
+
+      {/* Text centered inside */}
+      {lines.map((ln, i) => (
+        <text
+          key={i}
+          x={cx}
+          y={cy + (i - (lines.length - 1) / 2) * 12}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={COLORS.decision_text}
+          fontSize={9}
+          fontWeight={700}
+          fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
+          pointerEvents="none"
+        >
+          {ln}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AGENT NODE — Floating agent detail card
+═══════════════════════════════════════════════════════════ */
 export function AgentNode({ parentNode, offset, onDragStart }) {
   const relX = offset?.x ?? (NODE_W / 2 + 50);
   const relY = offset?.y ?? -85;
   const x = parentNode.cx + relX;
   const y = parentNode.cy + relY;
-  const width = 280;
-  const height = 200;
+  const width = 260;
+  const height = 180;
+  const laneAccent = LANE_ACCENTS[parentNode.laneIndex % LANE_ACCENTS.length];
 
   return (
-    <g className="agent-group cursor-grab active:cursor-grabbing"
+    <g
+      className="agent-group cursor-grab active:cursor-grabbing"
       data-agent-id={parentNode.id}
       onMouseDown={onDragStart}
     >
-      {/* Automates Edge - Bezier curve that adjusts to agent position */}
+      {/* Connector line */}
       <path
-        d={`M ${parentNode.cx + NODE_W / 2} ${parentNode.cy} 
-           C ${parentNode.cx + NODE_W / 2 + 30} ${parentNode.cy}, 
-             ${x + 20} ${y + height / 2 + 30}, 
-             ${x + 40} ${y + 100}`}
-        fill="none" stroke="#10B981" strokeWidth={2} strokeDasharray="5 5"
+        d={`M ${parentNode.cx + NODE_W / 2} ${parentNode.cy}
+           C ${parentNode.cx + NODE_W / 2 + 25} ${parentNode.cy},
+             ${x + 15} ${y + height / 2 + 20},
+             ${x + 30} ${y + 80}`}
+        fill="none"
+        stroke={laneAccent.accent}
+        strokeWidth={1.2}
+        strokeDasharray="4 4"
         markerEnd={`url(#${MARKER_ID})`}
       />
-      <g transform={`translate(${parentNode.cx + NODE_W / 2 + 35}, ${parentNode.cy + 12})`}>
-        <rect x={-35} y={-8} width={70} height={16} rx={4} fill="#fff" />
-        <text textAnchor="middle" dominantBaseline="middle" fontSize={7.5} fontWeight={900} fill="#10B981" letterSpacing="1px" pointerEvents="none">
+      <g transform={`translate(${parentNode.cx + NODE_W / 2 + 30}, ${parentNode.cy + 10})`}>
+        <rect x={-30} y={-7} width={60} height={14} rx={7} fill="#fff" stroke="#E5E7EB" strokeWidth={0.8} />
+        <text
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={7}
+          fontWeight={700}
+          fill={laneAccent.accent}
+          letterSpacing="0.8px"
+          pointerEvents="none"
+        >
           AUTOMATES
         </text>
       </g>
 
       <foreignObject x={x} y={y} width={width} height={height} style={{ overflow: "visible", pointerEvents: "none" }}>
-        <div className="w-[260px] bg-white border-2 border-violet-500 rounded-3xl shadow-[0_20px_50px_-12px_rgba(139,92,246,0.3)] overflow-hidden scale-90 origin-top-left animate-in zoom-in fade-in duration-500">
-          <div className="bg-gradient-to-br from-violet-500 to-violet-600 p-4 flex items-center gap-3 text-white">
-            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-              <Bot size={20} className="stroke-[2.5]" />
+        <div
+          className="w-[240px] bg-white rounded-xl overflow-hidden scale-90 origin-top-left"
+          style={{
+            border: `1.5px solid ${laneAccent.accent}40`,
+            boxShadow: `0 12px 32px -8px ${laneAccent.accent}25`,
+          }}
+        >
+          <div
+            className="p-3 flex items-center gap-2.5 text-white"
+            style={{ background: `linear-gradient(135deg, ${laneAccent.accent}, ${laneAccent.accent}cc)` }}
+          >
+            <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+              <Bot size={16} className="stroke-[2]" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-80">Orchestrator</span>
-              <span className="font-extrabold text-sm tracking-tight leading-none">Process Agent</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.15em] opacity-80">
+                Orchestrator
+              </span>
+              <span className="font-bold text-xs tracking-tight leading-none">
+                Process Agent
+              </span>
             </div>
           </div>
-          <div className="p-4 bg-slate-50/50">
-            <ul className="space-y-3">
+          <div className="p-3 bg-gray-50/50">
+            <ul className="space-y-2">
               {(parentNode.agentInfo?.tasks || [
                 "Validates sequence logic",
                 "Orchestrates parallel tasks",
-                "Verifies data integrity"
+                "Verifies data integrity",
               ]).map((t, i) => (
-                <li key={i} className="flex items-start gap-3 text-[12px] font-bold text-slate-700 leading-tight">
-                  <div className="mt-1 w-2 h-2 rounded-full bg-violet-500 shrink-0 shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-[11px] font-medium text-gray-600 leading-tight"
+                >
+                  <div
+                    className="mt-0.5 w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: laneAccent.accent }}
+                  />
                   {t}
                 </li>
               ))}

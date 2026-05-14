@@ -1,74 +1,157 @@
 /* ═══════════════════════════════════════════════════════════
-   LAYOUT CONSTANTS
+   LAYOUT CONSTANTS — Premium BPMN-style workflow
 ═══════════════════════════════════════════════════════════ */
-export const TITLE_W = 46;
-export const LABEL_W = 132;
+export const TITLE_W = 40;
+export const LABEL_W = 120;
 export const CONTENT_X = TITLE_W + LABEL_W;
 
-export const NODE_W = 260;
-export const NODE_H = 88;
-export const NODE_GAP = 80;
+export const NODE_W = 180;
+export const NODE_H = 52;
+export const NODE_GAP = 100;
 export const LANE_H = 120;
 export const ROW_GAP = 36;
-export const MAX_COLS = 5;
-export const START_R = 20;
-export const DIAMOND_S = 35;
+export const MAX_COLS = 6;
+export const START_R = 32;
+export const DIAMOND_S = 32;
 
 export const MARKER_ID = "tip";
 
-/* Node colours */
+/* ─── Color Palette ──────────────────────────────────── */
 export const COLORS = {
-  blue: "#3B82F6",    // Vibrant Blue
-  green: "#10B981",   // Emerald Green
-  orange: "#F97316",  // Orange
-  yellow: "#EAB308",  // Yellow/Amber
-  pink: "#EF4444",    // Red
+  /* Node */
+  node_bg:        "#FFFFFF",
+  node_border:    "#D1D5DB",
+  node_text:      "#1F2937",
+  node_shadow:    "rgba(0,0,0,0.04)",
+
+  /* Edges */
+  edge:           "#64748B",
+  edge_light:     "#94A3B8",
+
+  /* Start / End */
+  start_fill:     "#D1FAE5",
+  start_stroke:   "#6EE7B7",
+  start_text:     "#047857",
+  end_fill:       "#D1FAE5",
+  end_stroke:     "#6EE7B7",
+  end_text:       "#047857",
+
+  /* Decision diamond */
+  decision_fill:  "#E0E7FF",
+  decision_stroke:"#A5B4FC",
+  decision_text:  "#3730A3",
+
+  /* Labels */
+  label_text:     "#6B7280",
+  label_badge_bg: "#F3F4F6",
+
+  /* Lanes */
+  lane_border:    "#E5E7EB",
+
+  /* Legacy compat */
+  blue:   "#3B82F6",
+  green:  "#10B981",
+  orange: "#F97316",
+  yellow: "#EAB308",
+  pink:   "#EF4444",
 };
 
-/* Lane background styling presets for layered orchestration view */
-export const LANE_STYLES = [
-  {
-    bg: "linear-gradient(90deg, rgba(59,130,246,0.08) 0%, rgba(59,130,246,0.02) 60%, rgba(59,130,246,0) 100%)",
-    badge: "#1D4ED8",
-    tint: "rgba(59,130,246,0.08)",
+/* ─── Lane accent color palette (cycling) ────────────── */
+export const LANE_ACCENTS = [
+  { // Blue
+    accent:   "#3B82F6",
+    bg:       "rgba(59,130,246,0.04)",
+    tint:     "rgba(59,130,246,0.06)",
+    badge_bg: "rgba(59,130,246,0.10)",
+    badge_fg: "#2563EB",
+    node_tint:"rgba(59,130,246,0.05)",
+    node_bar: "#3B82F6",
   },
-  {
-    bg: "linear-gradient(90deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 60%, rgba(16,185,129,0) 100%)",
-    badge: "#047857",
-    tint: "rgba(16,185,129,0.08)",
+  { // Emerald
+    accent:   "#10B981",
+    bg:       "rgba(16,185,129,0.04)",
+    tint:     "rgba(16,185,129,0.06)",
+    badge_bg: "rgba(16,185,129,0.10)",
+    badge_fg: "#059669",
+    node_tint:"rgba(16,185,129,0.05)",
+    node_bar: "#10B981",
   },
-  {
-    bg: "linear-gradient(90deg, rgba(249,115,22,0.08) 0%, rgba(249,115,22,0.02) 60%, rgba(249,115,22,0) 100%)",
-    badge: "#C2410C",
-    tint: "rgba(249,115,22,0.08)",
+  { // Violet
+    accent:   "#8B5CF6",
+    bg:       "rgba(139,92,246,0.04)",
+    tint:     "rgba(139,92,246,0.06)",
+    badge_bg: "rgba(139,92,246,0.10)",
+    badge_fg: "#7C3AED",
+    node_tint:"rgba(139,92,246,0.05)",
+    node_bar: "#8B5CF6",
   },
-  {
-    bg: "linear-gradient(90deg, rgba(234,179,8,0.08) 0%, rgba(234,179,8,0.02) 60%, rgba(234,179,8,0) 100%)",
-    badge: "#A16207",
-    tint: "rgba(234,179,8,0.08)",
+  { // Amber
+    accent:   "#F59E0B",
+    bg:       "rgba(245,158,11,0.04)",
+    tint:     "rgba(245,158,11,0.06)",
+    badge_bg: "rgba(245,158,11,0.10)",
+    badge_fg: "#D97706",
+    node_tint:"rgba(245,158,11,0.05)",
+    node_bar: "#F59E0B",
+  },
+  { // Rose
+    accent:   "#F43F5E",
+    bg:       "rgba(244,63,94,0.04)",
+    tint:     "rgba(244,63,94,0.06)",
+    badge_bg: "rgba(244,63,94,0.10)",
+    badge_fg: "#E11D48",
+    node_tint:"rgba(244,63,94,0.05)",
+    node_bar: "#F43F5E",
+  },
+  { // Cyan
+    accent:   "#06B6D4",
+    bg:       "rgba(6,182,212,0.04)",
+    tint:     "rgba(6,182,212,0.06)",
+    badge_bg: "rgba(6,182,212,0.10)",
+    badge_fg: "#0891B2",
+    node_tint:"rgba(6,182,212,0.05)",
+    node_bar: "#06B6D4",
+  },
+  { // Indigo
+    accent:   "#6366F1",
+    bg:       "rgba(99,102,241,0.04)",
+    tint:     "rgba(99,102,241,0.06)",
+    badge_bg: "rgba(99,102,241,0.10)",
+    badge_fg: "#4F46E5",
+    node_tint:"rgba(99,102,241,0.05)",
+    node_bar: "#6366F1",
   },
 ];
 
+/* Legacy LANE_STYLES (backwards compat — maps to LANE_ACCENTS) */
+export const LANE_STYLES = LANE_ACCENTS;
+
 /* Dynamic column position calculator */
 export const getColCx = (colIndex) => {
-  return 30 + (NODE_W + NODE_GAP) * colIndex + NODE_W / 2;
+  return 50 + (NODE_W + NODE_GAP) * colIndex + NODE_W / 2;
 };
 
-/* Helper to wrap long labels into 2 lines */
-export const wrapText = (text, maxLineChars = 22) => {
+/* Helper to wrap long labels into multiple lines */
+export const wrapText = (text, maxLineChars = 20) => {
   if (!text) return [""];
   if (text.includes("\n")) return text.split("\n");
   if (text.length <= maxLineChars) return [text];
 
   const words = text.split(" ");
-  let line1 = "";
-  let i = 0;
-  while (i < words.length && (line1 + (line1 ? " " : "") + words[i]).length <= maxLineChars) {
-    line1 += (line1 ? " " : "") + words[i];
-    i++;
+  const lines = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const test = currentLine ? `${currentLine} ${word}` : word;
+    if (test.length <= maxLineChars) {
+      currentLine = test;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
   }
-  const line2 = words.slice(i).join(" ");
-  return line2 ? [line1, line2] : [line1];
+  if (currentLine) lines.push(currentLine);
+  return lines.length ? lines : [""];
 };
 
 /* Build node map with optional wrapping */
