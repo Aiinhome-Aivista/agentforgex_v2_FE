@@ -1,4 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect, useId } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+} from "react";
 import {
   ZoomIn,
   ZoomOut,
@@ -11,9 +18,9 @@ import { getProcessFlow } from "../../services/api";
 import {
   TITLE_W,
   LABEL_W,
-  LANE_H,
   NODE_W,
-  buildNodeMap,
+  LANE_H,
+  buildWorkflowLayout,
   LANE_STYLES,
 } from "./utils/workflowUtils";
 import {
@@ -42,12 +49,27 @@ export default function SwimlaneDiagram({
   forPdf = false,
 }) {
   const [diagramData, setDiagramData] = useState(propData || sampleDiagramData);
-  const [nodes, setNodes] = useState(() => buildNodeMap(diagramData));
+  const [nodes, setNodes] = useState(() => buildWorkflowLayout(diagramData).nodeMap);
   const [loading, setLoading] = useState(false);
   const lastFetchedId = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const markerId = useId().replace(/:/g, "");
+
+  const layoutBase = useMemo(
+    () => buildWorkflowLayout(diagramData),
+    [diagramData]
+  );
+  const laneMeta = layoutBase.laneMeta;
+  const svgH = laneMeta.length
+    ? laneMeta.reduce((sum, lane) => sum + lane.height, 0)
+    : LANE_H;
+  const laneBoundaries = laneMeta.length
+    ? [0, ...laneMeta.map((lane) => lane.top + lane.height)]
+    : [0, LANE_H];
+  const laneRenderMeta = laneMeta.length
+    ? laneMeta
+    : [{ id: "default", index: 0, top: 0, height: LANE_H }];
 
   // Sync internal data when propData changes
   useEffect(() => {
@@ -75,8 +97,8 @@ export default function SwimlaneDiagram({
 
   // Sync nodes when diagramData changes
   useEffect(() => {
-    setNodes(buildNodeMap(diagramData));
-  }, [diagramData]);
+    setNodes(layoutBase.nodeMap);
+  }, [layoutBase]);
 
   const [isPanning, setIsPanning] = useState(false);
   const [draggingNodeId, setDraggingNodeId] = useState(null);
@@ -88,9 +110,6 @@ export default function SwimlaneDiagram({
   const containerRef = useRef(null);
 
   const allNodes = Object.values(nodes);
-  const laneCount = diagramData.lanes?.length || 1;
-  const svgH = laneCount * LANE_H;
-
   const rightmost =
     allNodes.length > 0
       ? Math.max(...allNodes.map((n) => n.cx + NODE_W / 2))
@@ -115,7 +134,7 @@ export default function SwimlaneDiagram({
 
   const handleReset = () => {
     setViewport({ x: 0, y: 50, zoom: 0.6 });
-    setNodes(buildNodeMap(diagramData));
+    setNodes(layoutBase.nodeMap);
     setAgentOffsets({});
   };
 
@@ -265,17 +284,17 @@ export default function SwimlaneDiagram({
               backgroundSize: "18px 18px",
             }}
           >
-            {Array.from({ length: laneCount }).map((_, i) => {
-              const laneStyle = LANE_STYLES[i % LANE_STYLES.length];
+            {laneRenderMeta.map((lane) => {
+              const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
               return (
                 <div
-                  key={`lane-bg-pdf-${i}`}
+                  key={`lane-bg-pdf-${lane.id ?? lane.index}`}
                   style={{
                     position: "absolute",
-                    top: i * LANE_H,
+                    top: lane.top,
                     left: 0,
                     right: 0,
-                    height: LANE_H,
+                    height: lane.height,
                     background: laneStyle.bg,
                     pointerEvents: "none",
                   }}
@@ -283,12 +302,12 @@ export default function SwimlaneDiagram({
               );
             })}
 
-            {Array.from({ length: laneCount + 1 }).map((_, i) => (
+            {laneBoundaries.map((y, i) => (
               <div
-                key={i}
+                key={`lane-line-pdf-${i}`}
                 style={{
                   position: "absolute",
-                  top: i * LANE_H,
+                  top: y,
                   left: 0,
                   right: 0,
                   height: 1,
@@ -308,11 +327,12 @@ export default function SwimlaneDiagram({
               {diagramData.lanes?.map((lane, idx) => {
                 const lines = lane.label.split("\n");
                 const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
+                const laneHeight = laneMeta[idx]?.height ?? LANE_H;
                 return (
                   <div
                     key={lane.id}
                     style={{
-                      height: LANE_H,
+                      height: laneHeight,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
@@ -497,17 +517,17 @@ export default function SwimlaneDiagram({
               }}
             />
 
-            {Array.from({ length: laneCount }).map((_, i) => {
-              const laneStyle = LANE_STYLES[i % LANE_STYLES.length];
+            {laneRenderMeta.map((lane) => {
+              const laneStyle = LANE_STYLES[lane.index % LANE_STYLES.length];
               return (
                 <div
-                  key={`lane-bg-${i}`}
+                  key={`lane-bg-${lane.id ?? lane.index}`}
                   style={{
                     position: "absolute",
-                    top: i * LANE_H,
+                    top: lane.top,
                     left: 0,
                     right: -10000,
-                    height: LANE_H,
+                    height: lane.height,
                     background: laneStyle.bg,
                     pointerEvents: "none",
                   }}
@@ -515,12 +535,12 @@ export default function SwimlaneDiagram({
               );
             })}
 
-            {Array.from({ length: laneCount + 1 }).map((_, i) => (
+            {laneBoundaries.map((y, i) => (
               <div
-                key={i}
+                key={`lane-line-${i}`}
                 style={{
                   position: "absolute",
-                  top: i * LANE_H,
+                  top: y,
                   left: 0,
                   right: -10000,
                   height: 1,
@@ -543,11 +563,12 @@ export default function SwimlaneDiagram({
                 {diagramData.lanes?.map((lane, idx) => {
                   const lines = lane.label.split("\n");
                   const laneStyle = LANE_STYLES[idx % LANE_STYLES.length];
+                  const laneHeight = laneMeta[idx]?.height ?? LANE_H;
                   return (
                     <div
                       key={lane.id}
                       style={{
-                        height: LANE_H,
+                        height: laneHeight,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",

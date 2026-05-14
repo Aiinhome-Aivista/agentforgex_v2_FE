@@ -9,6 +9,8 @@ export const NODE_W = 260;
 export const NODE_H = 88;
 export const NODE_GAP = 80;
 export const LANE_H = 120;
+export const ROW_GAP = 36;
+export const MAX_COLS = 5;
 export const START_R = 20;
 export const DIAMOND_S = 35;
 
@@ -69,18 +71,52 @@ export const wrapText = (text, maxLineChars = 22) => {
   return line2 ? [line1, line2] : [line1];
 };
 
-/* Build node map from data */
-export const buildNodeMap = (data) => {
-  if (!data || !data.lanes) return {};
+/* Build node map with optional wrapping */
+export const buildWorkflowLayout = (data, opts = {}) => {
+  if (!data || !data.lanes) {
+    return { nodeMap: {}, laneMeta: [], totalHeight: 0, maxRight: 0 };
+  }
+
+  const maxCols = opts.maxCols ?? MAX_COLS;
   const nm = {};
+  const laneMeta = [];
+  let totalHeight = 0;
+  let maxRight = 0;
+
   data.lanes.forEach((lane, li) => {
-    const cy = li * LANE_H + LANE_H / 2;
-    lane.nodes.forEach(node => {
-      const col = node.column ?? 1;
-      nm[node.id] = { ...node, cx: getColCx(col), cy, laneIndex: li };
+    const nodes = lane.nodes || [];
+    const maxCol = nodes.reduce((m, n) => Math.max(m, n.column ?? 1), 0);
+    const rowCount = Math.floor(maxCol / maxCols) + 1;
+    const laneHeight = LANE_H * rowCount + ROW_GAP * (rowCount - 1);
+    const laneTop = totalHeight;
+
+    laneMeta.push({
+      id: lane.id,
+      index: li,
+      top: laneTop,
+      height: laneHeight,
+      rowCount,
     });
+
+    nodes.forEach((node) => {
+      const col = node.column ?? 1;
+      const row = Math.floor(col / maxCols);
+      const colInRow = col % maxCols;
+      const cx = getColCx(colInRow);
+      const cy = laneTop + row * (LANE_H + ROW_GAP) + LANE_H / 2;
+      nm[node.id] = { ...node, cx, cy, laneIndex: li, rowIndex: row };
+      maxRight = Math.max(maxRight, cx + NODE_W / 2);
+    });
+
+    totalHeight += laneHeight;
   });
-  return nm;
+
+  return { nodeMap: nm, laneMeta, totalHeight, maxRight };
+};
+
+/* Build node map from data (backwards compatible) */
+export const buildNodeMap = (data) => {
+  return buildWorkflowLayout(data).nodeMap;
 };
 
 /* Line shortening helper for arrows */
