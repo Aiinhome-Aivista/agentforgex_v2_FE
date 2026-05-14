@@ -14,9 +14,9 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const agentInfo = n.agentInfo;
-  const accent = agentInfo ? (COLORS[n.color] || COLORS.pink) : COLORS.green; 
-  const bg = accent + "10"; // 10% opacity
-  const iconColor = agentInfo ? COLORS.green : accent; // Icon is green if agentic
+  const accent = agentInfo?.accentColor || COLORS[n.color] || COLORS.blue;
+  const bg = accent + "12";
+  const iconColor = agentInfo ? accent : COLORS.green;
   const lines = wrapText(n.label);
   const x = n.cx - NODE_W / 2;
   const y = n.cy - NODE_H / 2;
@@ -31,28 +31,32 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
       <rect x={x + 2} y={y + 2} width={NODE_W} height={NODE_H} rx={14}
         fill="rgba(0,0,0,0.06)" />
 
-      {/* Main Card - White base to block underlying lines */}
-      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={14}
-        fill="#ffffff" />
-      {/* Tinted Overlay */}
-      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={14}
-        fill={bg} stroke={accent + "30"} strokeWidth={1} />
+      {/* Main Card */}
+      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={16}
+        fill="#ffffff" stroke={accent + "35"} strokeWidth={1} />
+      {/* Subtle tint overlay */}
+      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={16}
+        fill={bg} />
 
-      {/* Left Accent Bar */}
-      <path d={`M ${x + 8} ${y} 
-                H ${x + 6} 
-                A 6 6 0 0 0 ${x} ${y + 6} 
-                V ${y + NODE_H - 6} 
-                A 6 6 0 0 0 ${x + 6} ${y + NODE_H} 
-                H ${x + 8} Z`}
+      {/* Top Accent Strip */}
+      <rect x={x} y={y} width={NODE_W} height={6} rx={16}
         fill={accent} />
 
-      {/* Icon Container (White Circle) */}
+            {/* Left Accent Bar */}
+            <path d={`M ${x + 8} ${y + 6}
+          H ${x + 6}
+          A 6 6 0 0 0 ${x} ${y + 12}
+          V ${y + NODE_H - 12}
+          A 6 6 0 0 0 ${x + 6} ${y + NODE_H - 6}
+          H ${x + 8} Z`}
+        fill={accent} />
+
+      {/* Icon Container */}
       <rect x={x + 18} y={n.cy - 16} width={32} height={32} rx={10}
-        fill="#fff" stroke="rgba(0,0,0,0.05)" strokeWidth={0.5} />
+        fill="#ffffff" stroke={accent + "30"} strokeWidth={0.8} />
 
       {/* Database/Process Icon */}
-      <g transform={`translate(${x + 24}, ${n.cy - 10})`} fill="none" stroke={iconColor} strokeWidth={1.5}>
+      <g transform={`translate(${x + 24}, ${n.cy - 10})`} fill="none" stroke={iconColor} strokeWidth={1.6}>
         <ellipse cx="10" cy="5" rx="7" ry="3" />
         <path d="M 3 5 v 8 c 0 1.65 3.13 3 7 3 s 7 -1.35 7 -3 v -8" />
       </g>
@@ -63,8 +67,8 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
           <text key={i} x={0}
             y={(i - (lines.length - 1) / 2) * 16}
             textAnchor="start" dominantBaseline="middle"
-            fill="#1F2937" fontSize={11.5} fontWeight={700}
-            fontFamily="Inter, Segoe UI, sans-serif">{ln}</text>
+            fill="#0F172A" fontSize={11.5} fontWeight={700}
+            fontFamily="Manrope, Segoe UI, sans-serif">{ln}</text>
         ))}
       </g>
 
@@ -81,6 +85,7 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
             {/* Badge Icon */}
             <div
               className={`w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-xl border-2 border-emerald-500 transition-all duration-500 cursor-pointer hover:scale-110 active:scale-95 ${isOpen ? "rotate-90 bg-emerald-50" : ""}`}
+              onClick={toggleAgent}
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >

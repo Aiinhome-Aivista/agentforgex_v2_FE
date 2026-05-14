@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Cpu, CheckCircle2, ChevronDown, Workflow, Play, RefreshCw } from 'lucide-react'
 import StepCard from '../components/analysis/StepCard'
 import SuggestionCard from '../components/automation/SuggestionCard'
-import AgenticWorkflow from '../components/automation/AgenticWorkflowDiagramOld'
 import AgenticDeploymentFlow from '../components/automation/AgenticArchitectureOld'
 import SwimlaneDiagram from '../components/automation/AgenticWorkflowDiagramNew'
 import { getProcessFlow } from '../services/api'
@@ -229,7 +228,7 @@ function AgenticWorkflowCard({ suggestionId }) {
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl bg-black/40">
-        <AgenticWorkflow suggestionId={suggestionId} />
+        <SwimlaneDiagram suggestionId={suggestionId} />
       </div>
     </div>
   )

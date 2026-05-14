@@ -23,6 +23,30 @@ export const COLORS = {
   pink: "#EF4444",    // Red
 };
 
+/* Lane background styling presets for layered orchestration view */
+export const LANE_STYLES = [
+  {
+    bg: "linear-gradient(90deg, rgba(59,130,246,0.08) 0%, rgba(59,130,246,0.02) 60%, rgba(59,130,246,0) 100%)",
+    badge: "#1D4ED8",
+    tint: "rgba(59,130,246,0.08)",
+  },
+  {
+    bg: "linear-gradient(90deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 60%, rgba(16,185,129,0) 100%)",
+    badge: "#047857",
+    tint: "rgba(16,185,129,0.08)",
+  },
+  {
+    bg: "linear-gradient(90deg, rgba(249,115,22,0.08) 0%, rgba(249,115,22,0.02) 60%, rgba(249,115,22,0) 100%)",
+    badge: "#C2410C",
+    tint: "rgba(249,115,22,0.08)",
+  },
+  {
+    bg: "linear-gradient(90deg, rgba(234,179,8,0.08) 0%, rgba(234,179,8,0.02) 60%, rgba(234,179,8,0) 100%)",
+    badge: "#A16207",
+    tint: "rgba(234,179,8,0.08)",
+  },
+];
+
 /* Dynamic column position calculator */
 export const getColCx = (colIndex) => {
   return 30 + (NODE_W + NODE_GAP) * colIndex + NODE_W / 2;
