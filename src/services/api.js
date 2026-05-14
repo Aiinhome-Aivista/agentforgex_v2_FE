@@ -65,6 +65,9 @@ export const getAutomationArchitecture = (id) => {
   archCache.set(id, promise)
   return promise
 }
+
+export const getTechnicalDesign = (id) => api.get(`/suggestions/${id}/technical-design`)
+
 export const runAutomationArchitecture = (data) => api.post(`/agent/run`, data)
 
 export const loginUser = (email, password) =>
