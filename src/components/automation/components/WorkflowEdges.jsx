@@ -1,17 +1,23 @@
 import React from "react";
 import {
   MARKER_ID,
-  COLORS,
   NODE_W,
   NODE_H,
-  START_R,
+  START_W,
+  START_H,
   DIAMOND_S,
+  EDGE_RADIUS,
+  EDGE_STUB,
+  TOKENS,
   shorten,
+  orthogonalPath,
+  halfWidth,
+  halfHeight,
 } from "../utils/workflowUtils";
 
-/* ═══════════════════════════════════════════════════════════
-   SVG DEFS — refined arrowhead marker
-═══════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────
+   SVG defs — refined arrowhead + soft glow
+───────────────────────────────────────────────────────── */
 export function Defs({ markerId = MARKER_ID }) {
   return (
     <defs>
@@ -24,320 +30,317 @@ export function Defs({ markerId = MARKER_ID }) {
         markerHeight="6"
         orient="auto-start-reverse"
       >
-        <path d="M 0 1 L 8 5 L 0 9 z" fill={COLORS.edge} />
+        <path d="M 0 0 L 9 5 L 0 10 z" fill={TOKENS.edgeStrong} />
       </marker>
     </defs>
   );
 }
 
-/* ─── Edge label pill ────────────────────────────────── */
-function EdgeLabel({ x, y, label }) {
-  if (!label) return null;
+/* ─────────────────────────────────────────────────────────
+   EdgeLabel chip — small pill with "Yes" / "No" / etc.
+───────────────────────────────────────────────────────── */
+function EdgeLabel({ x, y, text }) {
+  if (!text) return null;
+  const charW = 6.5;
+  const padX = 8;
+  const w = Math.max(28, text.length * charW + padX * 2);
+  const h = 18;
   return (
-    <g transform={`translate(${x}, ${y})`}>
+    <g transform={`translate(${x - w / 2}, ${y - h / 2})`} pointerEvents="none">
+      <rect
+        width={w}
+        height={h}
+        rx={9}
+        fill={TOKENS.chipBg}
+        stroke={TOKENS.chipBorder}
+        strokeWidth={1}
+      />
       <text
+        x={w / 2}
+        y={h / 2 + 0.5}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={9}
+        fontSize={10.5}
         fontWeight={600}
-        fill={COLORS.edge}
-        fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
+        fill={TOKENS.chipText}
+        fontFamily="'Inter', 'SF Pro Display', system-ui, sans-serif"
+        letterSpacing="-0.005em"
       >
-        {label}
+        {text}
       </text>
     </g>
   );
 }
 
-/* ─── Straight segment ───────────────────────────────── */
-export function Seg({ x1, y1, x2, y2, label, markerId = MARKER_ID }) {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  return (
-    <g>
-      <line
-        x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={COLORS.edge}
-        strokeWidth={1.2}
-        markerEnd={`url(#${markerId})`}
-        fill="none"
-      />
-      <EdgeLabel x={mx} y={my - 8} label={label} />
-    </g>
-  );
-}
+/* ─────────────────────────────────────────────────────────
+   Anchor helpers — find the connection point on each side
+───────────────────────────────────────────────────────── */
+const anchor = {
+  right: (n)  => [n.cx + halfWidth(n),  n.cy],
+  left:  (n)  => [n.cx - halfWidth(n),  n.cy],
+  top:   (n)  => [n.cx,                 n.cy - halfHeight(n)],
+  bottom:(n)  => [n.cx,                 n.cy + halfHeight(n)],
+};
 
-/* ─── Orthogonal elbow with rounded corners ──────────── */
-export function Elbow({ pts, label, markerId = MARKER_ID }) {
-  if (!pts || pts.length < 2) return null;
+/* Smooth orthogonal path builder.
+   Routes from one node side to another using two stubs + an
+   elbow. The orthogonalPath() helper adds rounded corners. */
+function buildEdgePath({ from, to, fromSide, toSide, stub = EDGE_STUB }) {
+  const [fx, fy] = anchor[fromSide](from);
+  const [tx, ty] = anchor[toSide](to);
 
-  const R = 10; // corner radius
+  // Stub vectors based on side
+  const stubVec = {
+    right:  [ stub, 0],
+    left:   [-stub, 0],
+    top:    [ 0, -stub],
+    bottom: [ 0,  stub],
+  };
+  const [fsx, fsy] = stubVec[fromSide];
+  const [tsx, tsy] = stubVec[toSide];
 
-  let d = `M ${pts[0][0]},${pts[0][1]}`;
+  const p0 = [fx, fy];
+  const p1 = [fx + fsx, fy + fsy];
+  const p4 = [tx + tsx, ty + tsy];
+  const p5 = [tx, ty];
 
-  for (let i = 1; i < pts.length - 1; i++) {
-    const prev = pts[i - 1];
-    const curr = pts[i];
-    const next = pts[i + 1];
+  // Build interior corners depending on side combination
+  const horizontal = (s) => s === "left" || s === "right";
 
-    // Direction vectors
-    const dx1 = curr[0] - prev[0];
-    const dy1 = curr[1] - prev[1];
-    const dx2 = next[0] - curr[0];
-    const dy2 = next[1] - curr[1];
-
-    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-
-    const r = Math.min(R, len1 / 2, len2 / 2);
-
-    // Point before the corner
-    const bx = curr[0] - (dx1 / len1) * r;
-    const by = curr[1] - (dy1 / len1) * r;
-
-    // Point after the corner
-    const ax = curr[0] + (dx2 / len2) * r;
-    const ay = curr[1] + (dy2 / len2) * r;
-
-    // Determine sweep direction
-    const cross = dx1 * dy2 - dy1 * dx2;
-    const sweep = cross > 0 ? 1 : 0;
-
-    d += ` L ${bx},${by}`;
-    d += ` A ${r},${r} 0 0 ${sweep} ${ax},${ay}`;
+  let mid = [];
+  if (horizontal(fromSide) && horizontal(toSide)) {
+    // H → H : go to mid-x, down, then to target
+    const midX = (p1[0] + p4[0]) / 2;
+    mid = [
+      [midX, p1[1]],
+      [midX, p4[1]],
+    ];
+  } else if (!horizontal(fromSide) && !horizontal(toSide)) {
+    // V → V : go to mid-y, across, then to target
+    const midY = (p1[1] + p4[1]) / 2;
+    mid = [
+      [p1[0], midY],
+      [p4[0], midY],
+    ];
+  } else if (horizontal(fromSide) && !horizontal(toSide)) {
+    // H → V : turn once
+    mid = [[p4[0], p1[1]]];
+  } else {
+    // V → H : turn once
+    mid = [[p1[0], p4[1]]];
   }
 
-  // Final point
-  const last = pts[pts.length - 1];
-  d += ` L ${last[0]},${last[1]}`;
+  return { points: [p0, p1, ...mid, p4, p5], fromAnchor: p0, toAnchor: p5 };
+}
 
-  // Label at midpoint
-  const midIdx = Math.floor(pts.length / 2);
-  const mid = pts[midIdx];
+function midOf(points) {
+  // best mid point = around the middle of the polyline
+  const idx = Math.floor(points.length / 2);
+  const a = points[idx - 1] || points[0];
+  const b = points[idx] || points[points.length - 1];
+  return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+}
+
+/* ─────────────────────────────────────────────────────────
+   EdgePath — renders one routed connection
+───────────────────────────────────────────────────────── */
+function EdgePath({ points, label, markerId, dashed = false }) {
+  // shorten the last segment so arrowhead doesn't overlap the border
+  const pts = [...points];
+  const last = pts[pts.length - 1];
+  const prev = pts[pts.length - 2];
+  const [sx, sy, ex, ey] = shorten(prev[0], prev[1], last[0], last[1], 5);
+  pts[pts.length - 2] = [sx, sy];
+  pts[pts.length - 1] = [ex, ey];
+
+  const d = orthogonalPath(pts, EDGE_RADIUS);
+  const [mx, my] = midOf(pts);
 
   return (
     <g>
       <path
         d={d}
         fill="none"
-        stroke={COLORS.edge}
-        strokeWidth={1.2}
+        stroke={TOKENS.edge}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={dashed ? "4 4" : undefined}
         markerEnd={`url(#${markerId})`}
       />
-      <EdgeLabel x={mid[0]} y={mid[1] - 8} label={label} />
+      {label && <EdgeLabel x={mx} y={my} text={label} />}
     </g>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   RENDER ALL ARROWS — orthogonal routing for every type
-═══════════════════════════════════════════════════════════ */
-export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
-  const GAP = 6; // padding from node border
+/* Pick anchor sides based on relative geometry — produces
+   the most natural orthogonal route between two nodes.
+   The connection `type` is treated as a hint only; geometry wins
+   when they disagree (e.g. data labels a cross-lane connection
+   "inline" but the nodes are actually vertically stacked). */
+function pickSides(f, t, type) {
+  const dx = t.cx - f.cx;
+  const dy = t.cy - f.cy;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  const sameRow = ady < 20;
+  const sameCol = adx < 20;
 
+  // Strong "inline" hint AND same row → horizontal
+  if (type === "inline" && sameRow) {
+    return { fromSide: "right", toSide: "left" };
+  }
+
+  // Strong "down/diagonal_down" hint → vertical
+  if ((type === "down" || type === "diagonal_down") && !sameRow) {
+    return dy >= 0
+      ? { fromSide: "bottom", toSide: "top" }
+      : { fromSide: "top", toSide: "bottom" };
+  }
+
+  // Otherwise use pure geometry — pick whichever axis is dominant
+  if (ady > adx * 1.2 || sameCol) {
+    return dy >= 0
+      ? { fromSide: "bottom", toSide: "top" }
+      : { fromSide: "top", toSide: "bottom" };
+  }
+  if (adx > ady * 1.2 || sameRow) {
+    return dx >= 0
+      ? { fromSide: "right", toSide: "left" }
+      : { fromSide: "left", toSide: "right" };
+  }
+  // Roughly diagonal → exit horizontally, enter vertically (looks cleaner)
+  return dy >= 0
+    ? { fromSide: "right", toSide: "top" }
+    : { fromSide: "right", toSide: "bottom" };
+}
+
+/* Detect a loop-back: target is in an earlier (smaller) lane index
+   AND positioned to the upper-left of the source. Routes around the
+   right wall back to the target's right side. */
+function isLoopBack(f, t) {
+  if (typeof f.laneIndex === "number" && typeof t.laneIndex === "number") {
+    if (t.laneIndex < f.laneIndex && t.cx <= f.cx + 4) return true;
+  } else if (t.cy < f.cy - 20 && t.cx <= f.cx + 4) {
+    return true;
+  }
+  return false;
+}
+
+/* ─────────────────────────────────────────────────────────
+   renderArrows — entry point, handles connection types
+───────────────────────────────────────────────────────── */
+export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
   return flow.map((conn, i) => {
     const f = nm[conn.from];
     const t = nm[conn.to];
     if (!f || !t) return null;
 
-    const edgeLabel = conn.label || "";
-
-    switch (conn.type) {
-      /* ── Horizontal within lane ─────────────────────── */
-      case "inline": {
-        // Source right edge
-        let x1, y1;
-        if (f.type === "start") {
-          // Start pill: right edge
-          const pillW = START_R * 2.4;
-          x1 = f.cx + pillW / 2;
-          y1 = f.cy;
-        } else if (f.type === "decision") {
-          x1 = f.cx + DIAMOND_S;
-          y1 = f.cy;
-        } else {
-          x1 = f.cx + NODE_W / 2;
-          y1 = f.cy;
-        }
-
-        // Target left edge
-        let x2, y2;
-        if (t.type === "decision") {
-          x2 = t.cx - DIAMOND_S;
-          y2 = t.cy;
-        } else {
-          x2 = t.cx - NODE_W / 2;
-          y2 = t.cy;
-        }
-
-        // If same row — straight horizontal
-        if (Math.abs(y1 - y2) < 5) {
-          return (
-            <Seg
-              key={i}
-              x1={x1 + GAP} y1={y1}
-              x2={x2 - GAP} y2={y2}
-              label={edgeLabel}
-              markerId={markerId}
-            />
-          );
-        }
-
-        // Different row — orthogonal elbow: right → down/up → right
-        const midX = (x1 + x2) / 2;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1 + GAP, y1],
-              [midX, y1],
-              [midX, y2],
-              [x2 - GAP, y2],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
-      }
-
-      /* ── Straight down (next lane) ──────────────────── */
-      case "down": {
-        const x1 = f.type === "start" ? f.cx : f.cx;
-        const y1 = f.type === "start"
-          ? f.cy + (START_R * 1.3) / 2
-          : f.cy + NODE_H / 2;
-
-        const x2 = t.cx;
-        const y2 = t.type === "decision"
-          ? t.cy - DIAMOND_S
-          : t.cy - NODE_H / 2;
-
-        // Same column — straight vertical
-        if (Math.abs(x1 - x2) < 5) {
-          return (
-            <Seg
-              key={i}
-              x1={x1} y1={y1 + GAP}
-              x2={x2} y2={y2 - GAP}
-              label={edgeLabel}
-              markerId={markerId}
-            />
-          );
-        }
-
-        // Different column — orthogonal: down → across → down
-        const midY = (y1 + y2) / 2;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1, y1 + GAP],
-              [x1, midY],
-              [x2, midY],
-              [x2, y2 - GAP],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
-      }
-
-      /* ── YES — from diamond bottom to target top ────── */
-      case "yes": {
-        const x1 = f.cx;
-        const y1 = f.cy + DIAMOND_S;
-        const x2 = t.cx;
-        const y2 = t.cy - NODE_H / 2;
-
-        // Label position
-        const labelX = x1 + 14;
-        const labelY = y1 + 4;
-
-        // Same column — straight down
-        if (Math.abs(x1 - x2) < 5) {
-          return (
-            <g key={i}>
-              <Seg
-                x1={x1} y1={y1 + GAP}
-                x2={x2} y2={y2 - GAP}
-                markerId={markerId}
-              />
-              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
-            </g>
-          );
-        }
-
-        // Different column — orthogonal routing
-        const midY = (y1 + y2) / 2;
-        return (
-          <g key={i}>
-            <Elbow
-              pts={[
-                [x1, y1 + GAP],
-                [x1, midY],
-                [x2, midY],
-                [x2, y2 - GAP],
-              ]}
-              markerId={markerId}
-            />
-            <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
-          </g>
-        );
-      }
-
-      /* ── NO — from diamond right to target ─────────── */
-      case "no": {
-        const x1 = f.cx + DIAMOND_S;
-        const y1 = f.cy;
-        const x2 = t.cx;
-        const y2 = t.cy - NODE_H / 2;
-
-        // Label position
-        const labelX = x1 + 14;
-        const labelY = y1 - 4;
-
-        // Route: right from diamond → down to target top
-        return (
-          <g key={i}>
-            <Elbow
-              pts={[
-                [x1 + GAP, y1],
-                [x2, y1],
-                [x2, y2 - GAP],
-              ]}
-              markerId={markerId}
-            />
-            <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "No"} />
-          </g>
-        );
-      }
-
-      /* ── Diagonal down ─────────────────────────────── */
-      case "diagonal_down": {
-        const x1 = f.cx;
-        const y1 = f.cy + NODE_H / 2;
-        const x2 = t.cx;
-        const y2 = t.cy - NODE_H / 2;
-
-        // Use orthogonal routing instead of true diagonal
-        const midY = (y1 + y2) / 2;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1, y1 + GAP],
-              [x1, midY],
-              [x2, midY],
-              [x2, y2 - GAP],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
-      }
-
-      default:
-        return null;
+    // Auto-label yes / no if not provided
+    let label = conn.label || "";
+    if (!label) {
+      if (conn.type === "yes") label = "Yes";
+      else if (conn.type === "no") label = "No";
     }
+
+    // Loop-back routing for genuine back-edges
+    if (isLoopBack(f, t)) {
+      return renderLoopBack(f, t, label, i, markerId);
+    }
+
+    const { fromSide, toSide } = pickSides(f, t, conn.type);
+    const built = buildEdgePath({ from: f, to: t, fromSide, toSide });
+
+    return (
+      <EdgePath
+        key={i}
+        points={built.points}
+        label={label}
+        markerId={markerId}
+      />
+    );
   });
+}
+
+/* Loop-back routing — out the top of source, around the right
+   side, back down into the top of target (clean upside-down U). */
+function renderLoopBack(from, to, label, i, markerId) {
+  const [fx, fy] = anchor.top(from);
+  const [tx, ty] = anchor.top(to);
+
+  // Rise high enough above both nodes to clear them
+  const ceiling = Math.min(fy, ty) - 56;
+
+  const pts = [
+    [fx, fy],
+    [fx, ceiling],
+    [tx, ceiling],
+    [tx, ty],
+  ];
+
+  // shorten end so arrow doesn't overlap target border
+  const last = pts[pts.length - 1];
+  const prev = pts[pts.length - 2];
+  const [sx, sy, ex, ey] = shorten(prev[0], prev[1], last[0], last[1], 5);
+  pts[pts.length - 2] = [sx, sy];
+  pts[pts.length - 1] = [ex, ey];
+
+  const d = orthogonalPath(pts, EDGE_RADIUS);
+  const midX = (fx + tx) / 2;
+
+  return (
+    <g key={i}>
+      <path
+        d={d}
+        fill="none"
+        stroke={TOKENS.edge}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        markerEnd={`url(#${markerId})`}
+      />
+      {label && <EdgeLabel x={midX} y={ceiling} text={label} />}
+    </g>
+  );
+}
+
+/* Backwards-compat helpers (kept in case anything still imports them) */
+export function Seg({ x1, y1, x2, y2, label, markerId = MARKER_ID }) {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  return (
+    <g>
+      <line
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke={TOKENS.edge}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        markerEnd={`url(#${markerId})`}
+        fill="none"
+      />
+      {label && <EdgeLabel x={mx} y={my} text={label} />}
+    </g>
+  );
+}
+
+export function Elbow({ pts, label, markerId = MARKER_ID }) {
+  const d = orthogonalPath(pts, EDGE_RADIUS);
+  const [mx, my] = midOf(pts);
+  return (
+    <g>
+      <path
+        d={d}
+        fill="none"
+        stroke={TOKENS.edge}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        markerEnd={`url(#${markerId})`}
+      />
+      {label && <EdgeLabel x={mx} y={my} text={label} />}
+    </g>
+  );
 }
