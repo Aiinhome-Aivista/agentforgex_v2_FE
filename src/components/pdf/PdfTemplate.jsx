@@ -8,26 +8,91 @@ const PAGE_PADDING = 60;
 export default function PdfTemplate({ data }) {
   if (!data) return null;
 
-  const { document: docMeta, sections } = data;
+  const docMeta = data.document || data.document_metadata;
+  const { sections } = data;
 
-  // A helper component to render key-value tech stack items
-  const renderTechBlocks = (title, itemsObj) => {
-    if (!itemsObj || Object.keys(itemsObj).length === 0) return null;
-    return (
-      <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          {title}
-        </h3>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          {Object.entries(itemsObj).map(([k, v]) => (
-            <div key={k} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "10px 14px", background: "#f9fafb", fontSize: 12, flex: "1 1 45%" }}>
-              <span style={{ fontWeight: 700, color: "#374151", textTransform: "capitalize", display: "block", marginBottom: 4 }}>{k.replace(/_/g, ' ')}</span>
-              <span style={{ color: "#6b7280", lineHeight: 1.5 }}>{Array.isArray(v) ? v.join(', ') : v}</span>
+  const renderGenericData = (content, level = 0) => {
+    if (content === null || content === undefined) return null;
+    
+    if (typeof content === 'string' || typeof content === 'number' || typeof content === 'boolean') {
+      return <span style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>{String(content)}</span>;
+    }
+
+    if (Array.isArray(content)) {
+      if (content.length === 0) return null;
+      if (typeof content[0] === 'string' || typeof content[0] === 'number') {
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, marginBottom: 8 }}>
+            {content.map((item, i) => (
+              <span key={i} style={{ background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 4, padding: "4px 10px", fontSize: 12, color: "#4b5563", fontWeight: 500 }}>
+                {item}
+              </span>
+            ))}
+          </div>
+        );
+      }
+      
+      // Array of objects
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8, marginBottom: 12 }}>
+          {content.map((item, i) => (
+            <div key={i} style={{ background: level % 2 === 0 ? "#f9fafb" : "#fff", padding: 16, borderRadius: 8, border: "1px solid #e5e7eb" }}>
+              {renderGenericData(item, level + 1)}
             </div>
           ))}
         </div>
-      </div>
-    );
+      );
+    }
+
+    if (typeof content === 'object') {
+      const keys = Object.keys(content).filter(k => !['id', 'layer_id', 'agent_id', 'section_number', 'section_no'].includes(k));
+      if (keys.length === 0) return null;
+      
+      const titleKey = keys.find(k => ['title', 'name', 'component_name', 'tool_name', 'type', 'rail_type', 'store_type', 'memory_type', 'workflow_name'].includes(k));
+      const titleValue = titleKey ? content[titleKey] : null;
+      
+      const renderKeys = keys.filter(k => k !== titleKey);
+
+      return (
+        <div style={{ marginBottom: level === 0 ? 0 : 8 }}>
+          {titleValue && (
+            <h4 style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 12, marginTop: 0, paddingBottom: 8, borderBottom: "1px solid #e5e7eb" }}>
+              {titleValue}
+            </h4>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {renderKeys.map(k => {
+              const val = content[k];
+              if (val === null || val === undefined || val === '') return null;
+              
+              const isSimple = typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean';
+              const isStringArray = Array.isArray(val) && (val.length === 0 || typeof val[0] === 'string' || typeof val[0] === 'number');
+              
+              return (
+                <div key={k} style={{ display: isSimple ? 'flex' : 'block', gap: 16, alignItems: 'baseline' }}>
+                  <strong style={{ 
+                    fontSize: 12, 
+                    color: "#374151", 
+                    textTransform: "uppercase", 
+                    letterSpacing: "0.05em", 
+                    minWidth: isSimple ? 160 : 'auto', 
+                    marginBottom: (isSimple || isStringArray) ? 0 : 8, 
+                    display: isSimple ? 'inline-block' : 'block' 
+                  }}>
+                    {k.replace(/_/g, ' ')}
+                  </strong>
+                  <div style={{ flex: 1 }}>
+                    {renderGenericData(val, level + 1)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -109,7 +174,7 @@ export default function PdfTemplate({ data }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: "85%" }}>
           {sections?.map((sec, idx) => (
             <div key={idx} style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981", minWidth: 24 }}>{String(sec.section_no).padStart(2, '0')}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981", minWidth: 24 }}>{String(sec.section_no || sec.section_number).padStart(2, '0')}</span>
               <span style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>{sec.title}</span>
               <span style={{ borderBottom: "2px dotted #e5e7eb", flexGrow: 1, margin: "0 8px", position: "relative", top: -4 }}></span>
             </div>
@@ -119,166 +184,40 @@ export default function PdfTemplate({ data }) {
 
       {/* ════════════ CONTENT SECTIONS ════════════ */}
       <div style={{ background: "#fff", padding: PAGE_PADDING, boxSizing: "border-box", width: PAGE_WIDTH }}>
-        {sections?.map((section, idx) => (
-          <div key={idx} className="pdf-atomic pdf-print-page-break" style={{ marginBottom: 64, paddingBottom: 32, borderBottom: idx !== sections.length - 1 ? "1px solid #f3f4f6" : "none" }}>
-            
-            {/* Header branding on content pages */}
-            <div style={{ marginBottom: 40, display: "flex", alignItems: "center", gap: 12 }}>
-               <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4 }}></div>
-               <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em" }}>Technical Design Document</span>
-            </div>
-
-            {/* Section Title */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 32 }}>
-              <span style={{ fontSize: 36, fontWeight: 300, color: "#10b981", lineHeight: 1 }}>{String(section.section_no).padStart(2, '0')}</span>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111", lineHeight: 1.3, marginTop: 4 }}>{section.title}</h2>
-            </div>
-
-            {/* Summary */}
-            {section.summary && (
-              <p style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.8, marginBottom: 32 }}>
-                {section.summary}
-              </p>
-            )}
-
-            {/* Subsections */}
-            {section.subsections && section.subsections.map((sub, sIdx) => (
-              <div key={sIdx} style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981" }}></span>
-                  {sub.title}
-                </h3>
-                {sub.items && (
-                  <ul style={{ margin: 0, paddingLeft: 24, fontSize: 13, color: "#4b5563", lineHeight: 1.8 }}>
-                    {sub.items.map((item, iIdx) => (
-                      <li key={iIdx} style={{ marginBottom: 8 }}>{item}</li>
-                    ))}
-                  </ul>
-                )}
+        {sections?.map((section, idx) => {
+          // Extract section content, removing standard keys
+          const sectionContentKeys = Object.keys(section).filter(k => !['section_no', 'section_number', 'title'].includes(k));
+          
+          return (
+            <div key={idx} className="pdf-atomic pdf-print-page-break" style={{ marginBottom: 64, paddingBottom: 32, borderBottom: idx !== sections.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+              
+              {/* Header branding on content pages */}
+              <div style={{ marginBottom: 40, display: "flex", alignItems: "center", gap: 12 }}>
+                 <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4 }}></div>
+                 <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em" }}>Technical Design Document</span>
               </div>
-            ))}
 
-            {/* Architecture Layers */}
-            {section.architecture_layers && (
-              <div style={{ marginBottom: 32 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Architecture Layers</h3>
-                <div style={{ borderLeft: "3px solid #10b981", paddingLeft: 16 }}>
-                  <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 13, color: "#4b5563", lineHeight: 1.8 }}>
-                    {section.architecture_layers.map((layer, lIdx) => (
-                      <li key={lIdx} style={{ marginBottom: 8, position: "relative" }}>
-                        <strong style={{ color: "#374151" }}>Layer {lIdx + 1}:</strong> {layer}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {/* Section Title */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 32 }}>
+                <span style={{ fontSize: 36, fontWeight: 300, color: "#10b981", lineHeight: 1 }}>{String(section.section_no || section.section_number).padStart(2, '0')}</span>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111", lineHeight: 1.3, marginTop: 4 }}>{section.title}</h2>
               </div>
-            )}
 
-            {/* Frontend & Backend */}
-            {(section.frontend || section.backend) && (
-              <div style={{ display: "flex", gap: 24, marginBottom: 32 }}>
-                {section.frontend && (
-                  <div style={{ flex: 1, border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, background: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#111", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                      Frontend
-                    </h3>
-                    <div style={{ fontSize: 12, color: "#4b5563", display: "flex", flexDirection: "column", gap: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                        <strong>Framework</strong> <span>{section.frontend.framework}</span>
-                      </div>
-                      {section.frontend.state_management && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                          <strong>State</strong> <span>{section.frontend.state_management.join(', ')}</span>
-                        </div>
-                      )}
-                      {section.frontend.styling && (
-                        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                          <strong>Styling</strong> <span>{section.frontend.styling.join(', ')}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {section.backend && (
-                  <div style={{ flex: 1, border: "1px solid #e5e7eb", borderRadius: 12, padding: 20, background: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)" }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#111", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      Backend
-                    </h3>
-                    <div style={{ fontSize: 12, color: "#4b5563", display: "flex", flexDirection: "column", gap: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                        <strong>Runtime</strong> <span>{section.backend.runtime}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                        <strong>Queue</strong> <span>{section.backend.queue}</span>
-                      </div>
-                      {section.backend.websocket && (
-                         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e5e7eb", paddingBottom: 4 }}>
-                           <strong>WebSocket</strong> <span>Enabled</span>
-                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Agents Table */}
-            {section.agents && (
-              <div style={{ marginBottom: 32 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Agent Definitions</h3>
-                <div style={{ borderRadius: 8, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead style={{ background: "#f9fafb" }}>
-                      <tr>
-                        <th style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left", padding: "12px 16px", color: "#374151", fontWeight: 700, width: "20%" }}>ID</th>
-                        <th style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left", padding: "12px 16px", color: "#374151", fontWeight: 700, width: "30%" }}>Name</th>
-                        <th style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left", padding: "12px 16px", color: "#374151", fontWeight: 700, width: "50%" }}>Role</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.agents.map((agent, aIdx) => (
-                        <tr key={agent.agent_id} style={{ background: aIdx % 2 === 0 ? "#fff" : "#fcfcfc" }}>
-                          <td style={{ borderBottom: "1px solid #f3f4f6", padding: "12px 16px", color: "#6b7280", fontFamily: "monospace" }}>{agent.agent_id}</td>
-                          <td style={{ borderBottom: "1px solid #f3f4f6", padding: "12px 16px", fontWeight: 600, color: "#111" }}>{agent.name}</td>
-                          <td style={{ borderBottom: "1px solid #f3f4f6", padding: "12px 16px", color: "#4b5563" }}>{agent.role}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Components / Frameworks / Tech Stack */}
-            {renderTechBlocks("Frameworks", section.frameworks)}
-            {renderTechBlocks("Components", section.components)}
-            {renderTechBlocks("Tech Stack", section.tech_stack)}
-
-            {/* Arrays like report_sections, memory_types */}
-            {['report_sections', 'memory_types'].map((key) => {
-              if (section[key]) {
-                return (
-                  <div key={key} style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {/* Generic Content Renderer */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                {sectionContentKeys.map(key => (
+                  <div key={key}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "#111", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "2px solid #f3f4f6", paddingBottom: 8 }}>
                       {key.replace(/_/g, ' ')}
                     </h3>
-                    <div style={{ background: "#f9fafb", borderRadius: 8, padding: 16, border: "1px solid #e5e7eb" }}>
-                      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "#4b5563", lineHeight: 1.8 }}>
-                        {section[key].map((item, iIdx) => (
-                          <li key={iIdx} style={{ marginBottom: 6 }}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    {renderGenericData(section[key], 0)}
                   </div>
-                );
-              }
-              return null;
-            })}
+                ))}
+              </div>
 
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

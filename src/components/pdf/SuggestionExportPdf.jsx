@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { PDFProvider } from "../../context/PdfContext";
 import PdfTemplate from "./PdfTemplate";
 import { getTechnicalDesign } from "../../services/api";
+import demoData from "../../pages/demo.json";
 
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -97,28 +98,16 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
     setIsExporting(true);
 
     try {
-      const suggestionId = suggestion?.id || suggestion?._key;
-      if (suggestionId) {
-        try {
-          const res = await getTechnicalDesign(suggestionId);
-          if (res?.status && res?.data) {
-            setTechnicalDesign(res.data);
-          }
-        } catch (e) {
-          console.error("Failed to fetch technical design", e);
-          setToastError("Failed to fetch technical design data. PDF download aborted.");
-          setTimeout(() => setToastError(null), 4000);
-          return; // Abort the download
-        }
-      }
+      // Use demo JSON data instead of API call
+      setTechnicalDesign(demoData);
 
       // The container is already fixed offscreen left: -9999px, html2canvas can capture it.
       // We just need to make sure the width is set correctly for A4 portrait.
       const printContainer = printContainerRef.current;
       printContainer.style.width = "794px"; // Fixed width for A4 portrait rendering (96dpi)
 
-      // Wait for diagrams to fetch data and render
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      // Wait for React to render the template with the new data
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const atoms = await captureAtoms();
       if (atoms.length > 0) {
