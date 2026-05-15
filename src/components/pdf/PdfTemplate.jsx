@@ -6,7 +6,7 @@ const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1122;
 const PAGE_PADDING = 60;
 
-export default function PdfTemplate({ data }) {
+export default function PdfTemplate({ data, suggestionTitle }) {
   if (!data) return null;
 
   const docMeta = data.document || data.document_metadata;
@@ -130,7 +130,7 @@ export default function PdfTemplate({ data }) {
             {docMeta?.document_type || "Technical Design"}
           </p>
           <h1 style={{ fontSize: 46, fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 24, textWrap: "balance" }}>
-            {docMeta?.title}
+            {suggestionTitle || docMeta?.title}
           </h1>
         </div>
 

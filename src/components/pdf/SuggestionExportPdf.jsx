@@ -5,7 +5,6 @@ import { Download, Loader2 } from "lucide-react";
 import { PDFProvider } from "../../context/PdfContext";
 import PdfTemplate from "./PdfTemplate";
 import { getTechnicalDesign } from "../../services/api";
-import demoData from "../../pages/demo.json";
 
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -96,10 +95,20 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
 
   const handleDownload = useCallback(async () => {
     setIsExporting(true);
+    setToastError(null);
 
     try {
-      // Use demo JSON data instead of API call
-      setTechnicalDesign(demoData);
+      const currentSuggestionId = suggestion?.id || suggestion?._key;
+      if (!currentSuggestionId) {
+        throw new Error("Suggestion ID is missing");
+      }
+      
+      const response = await getTechnicalDesign(currentSuggestionId);
+      if (response?.status && response?.data) {
+        setTechnicalDesign(response.data);
+      } else {
+        throw new Error(response?.message || "Invalid data received from API");
+      }
 
       // The container is already fixed offscreen left: -9999px, html2canvas can capture it.
       // We just need to make sure the width is set correctly for A4 portrait.
@@ -111,12 +120,14 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
 
       const atoms = await captureAtoms();
       if (atoms.length > 0) {
-        const title = processData?.process?.title || suggestion?.title || "Automation_Suggestion";
+        const title = suggestion?.title || "Suggestion_Report";
         await exportToPdf(atoms, title);
       }
 
     } catch (error) {
       console.error("PDF Export failed:", error);
+      setToastError(error.message || "An error occurred during PDF export.");
+      setTimeout(() => setToastError(null), 4000);
     } finally {
       const printContainer = printContainerRef.current;
       if (printContainer) {
@@ -124,7 +135,7 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       }
       setIsExporting(false);
     }
-  }, [suggestion, processData, technicalDesign]);
+  }, [suggestion, processData]);
 
   const suggestionId = suggestion?.id || suggestion?._key;
   const process = processData?.process;
@@ -184,7 +195,7 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
           <PDFProvider value={true}>
             {/* ══════════════ TECHNICAL DESIGN ══════════════ */}
             {technicalDesign && (
-              <PdfTemplate data={technicalDesign} />
+              <PdfTemplate data={technicalDesign} suggestionTitle={suggestion?.title} />
             )}
           </PDFProvider>
         </div>
