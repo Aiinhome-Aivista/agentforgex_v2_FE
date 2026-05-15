@@ -8,6 +8,7 @@ import ProcessHeader from '../components/analysis/ProcessHeader'
 import OverviewTab from '../components/analysis/OverviewTab'
 import ERPContextTab from '../components/analysis/ERPContextTab'
 import AutomationTab from '../components/analysis/AutomationTab'
+import ExportPDF from '../components/pdf/ExportPdf'
 
 export default function WorkspaceDetailPage() {
   const { id } = useParams()
@@ -31,6 +32,9 @@ export default function WorkspaceDetailPage() {
           return
         }
         setWs(r.data)
+        if (r.data?.analysis_data) {
+          localStorage.setItem(`analysis_${id}`, JSON.stringify(r.data.analysis_data))
+        }
       })
       .catch((e) => { if (!cancelled) setError(e?.message || 'Could not load workspace') })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -186,6 +190,7 @@ export default function WorkspaceDetailPage() {
             process={process}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            actions={<ExportPDF data={data} />}
           />
 
           <div className="min-h-[400px]">

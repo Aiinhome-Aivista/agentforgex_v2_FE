@@ -30,7 +30,12 @@ export default function SuggestionCard({ suggestion, index, hideChip }) {
     // Extract the analysis ID from the current URL (e.g. /analysis/abc123)
     const pathParts = window.location.pathname.split('/')
     const analysisIdx = pathParts.indexOf('analysis')
-    const analysisId = analysisIdx !== -1 ? pathParts[analysisIdx + 1] : null
+    const workspaceIdx = pathParts.indexOf('workspaces')
+    const analysisId = analysisIdx !== -1 
+      ? pathParts[analysisIdx + 1] 
+      : workspaceIdx !== -1 
+        ? pathParts[workspaceIdx + 1] 
+        : null
 
     const details = {
       ...suggestion,

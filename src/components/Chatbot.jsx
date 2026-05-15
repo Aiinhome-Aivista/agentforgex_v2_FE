@@ -14,7 +14,7 @@ export default function Chatbot() {
   ]);
 
   // Determine if the chatbot should be visible on the current page
-  const isVisiblePath = location.pathname.includes('/analysis/') || location.pathname.includes('/suggestion/');
+  const isVisiblePath = location.pathname.includes('/analysis/') || location.pathname.includes('/suggestion/') || location.pathname.includes('/workspaces/');
   const shouldShow = isAuthenticated && isVisiblePath;
 
   useEffect(() => {
