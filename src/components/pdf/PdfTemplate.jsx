@@ -1,4 +1,5 @@
 import React from 'react';
+import { Zap } from 'lucide-react';
 
 // A4 sizing for our fixed-width print rendering
 const PAGE_WIDTH = 794;
@@ -22,13 +23,9 @@ export default function PdfTemplate({ data }) {
       if (content.length === 0) return null;
       if (typeof content[0] === 'string' || typeof content[0] === 'number') {
         return (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, marginBottom: 8 }}>
-            {content.map((item, i) => (
-              <span key={i} style={{ background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 4, padding: "4px 10px", fontSize: 12, color: "#4b5563", fontWeight: 500 }}>
-                {item}
-              </span>
-            ))}
-          </div>
+          <span style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
+            {content.join(', ')}
+          </span>
         );
       }
       
@@ -36,7 +33,7 @@ export default function PdfTemplate({ data }) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8, marginBottom: 12 }}>
           {content.map((item, i) => (
-            <div key={i} style={{ background: level % 2 === 0 ? "#f9fafb" : "#fff", padding: 16, borderRadius: 8, border: "1px solid #e5e7eb" }}>
+            <div key={i} style={{ paddingBottom: 16, borderBottom: i < content.length - 1 ? "1px dashed #e5e7eb" : "none" }}>
               {renderGenericData(item, level + 1)}
             </div>
           ))}
@@ -96,7 +93,7 @@ export default function PdfTemplate({ data }) {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#111", width: PAGE_WIDTH, margin: "0 auto", background: "#fff" }}>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#111", width: PAGE_WIDTH, margin: "0 auto", background: "#fff", textAlign: "left" }}>
       
       {/* ════════════ COVER PAGE ════════════ */}
       <div 
@@ -118,11 +115,11 @@ export default function PdfTemplate({ data }) {
 
         {/* Top bar */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 28, height: 28, background: "#10b981", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: 12, height: 12, background: "#fff", borderRadius: 2 }}></div>
+              <Zap size={16} color="#000" fill="#000" />
             </div>
-            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>Agent Forge</span>
+            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>AgentForgeX</span>
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981", letterSpacing: "0.2em", border: "1px solid rgba(16,185,129,0.3)", padding: "4px 12px", borderRadius: 20 }}>CONFIDENTIAL</span>
         </div>
@@ -135,9 +132,6 @@ export default function PdfTemplate({ data }) {
           <h1 style={{ fontSize: 46, fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 24, textWrap: "balance" }}>
             {docMeta?.title}
           </h1>
-          <p style={{ fontSize: 15, color: "#9ca3af", fontWeight: 500, borderLeft: "3px solid #10b981", paddingLeft: 16 }}>
-            Prepared for {docMeta?.organization || "Organization Name"}
-          </p>
         </div>
 
         {/* Bottom bar */}
@@ -145,9 +139,6 @@ export default function PdfTemplate({ data }) {
           <div style={{ display: "flex", gap: 48, fontSize: 12, color: "#9ca3af" }}>
             <span><strong style={{ color: "#fff", display: "block", marginBottom: 4, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.1em" }}>Date</strong> {docMeta?.date}</span>
             <span><strong style={{ color: "#fff", display: "block", marginBottom: 4, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.1em" }}>Version</strong> {docMeta?.version}</span>
-          </div>
-          <div style={{ fontSize: 12, color: "#9ca3af", textAlign: "right" }}>
-            <strong style={{ color: "#fff", display: "block", marginBottom: 4, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.1em" }}>Organization</strong> {docMeta?.organization}
           </div>
         </div>
       </div>
@@ -163,9 +154,11 @@ export default function PdfTemplate({ data }) {
           boxSizing: "border-box"
         }}
       >
-        <div style={{ marginBottom: 48, display: "flex", alignItems: "center", gap: 12 }}>
-           <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4 }}></div>
-           <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Agent Forge</span>
+        <div style={{ marginBottom: 48, display: "flex", alignItems: "center", gap: 8 }}>
+           <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+             <Zap size={10} color="#000" fill="#000" />
+           </div>
+           <span style={{ fontSize: 13, fontWeight: 800, color: "#6b7280", letterSpacing: "-0.01em" }}>AgentForgeX</span>
         </div>
         
         <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111", marginBottom: 40, paddingBottom: 16 }}>

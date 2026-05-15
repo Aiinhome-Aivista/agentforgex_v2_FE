@@ -178,6 +178,7 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
             background: "#ffffff",
             fontFamily: "'Inter', system-ui, sans-serif",
             color: "#111",
+            textAlign: "left"
           }}
         >
           <PDFProvider value={true}>
