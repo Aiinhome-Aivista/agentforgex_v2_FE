@@ -1,0 +1,988 @@
+{
+  "document_metadata": {
+    "title": "Agentic AI KT Risk Moderator Agent – Technical Design",
+    "version": "Draft V1.0",
+    "date": "April 2026",
+    "organization": "PwC",
+    "document_type": "Technical Design Document",
+    "pages": 34,
+    "classification": "Draft",
+    "domain": "Agentic AI / Managed Services / KT Risk Analysis"
+  },
+  "cover_page": {
+    "title": "Agentic AI KT Risk Moderator Agent – Technical Design",
+    "subtitle": "Technical Design",
+    "version": "Draft V1.0",
+    "date": "April 2026",
+    "organization": "PwC"
+  },
+  "table_of_contents": [
+    {
+      "section_number": "1",
+      "title": "Executive Summary",
+      "page": 4
+    },
+    {
+      "section_number": "2",
+      "title": "Solution Overview & Design Principles",
+      "page": 5,
+      "subsections": [
+        {
+          "section_number": "2.1",
+          "title": "Design Principles Aligned to Best Practices"
+        },
+        {
+          "section_number": "2.2",
+          "title": "Agent Category Classification"
+        }
+      ]
+    },
+    {
+      "section_number": "3",
+      "title": "Core Architecture Design",
+      "page": 6,
+      "subsections": [
+        {
+          "section_number": "3.1",
+          "title": "High-Level Architecture Layers"
+        },
+        {
+          "section_number": "3.2",
+          "title": "Presentation Layer (React JS Front-End)"
+        },
+        {
+          "section_number": "3.3",
+          "title": "API Gateway & Orchestration Layer"
+        },
+        {
+          "section_number": "3.4",
+          "title": "Layer 3 Agentic Core (Multi-Agent Orchestrator)"
+        },
+        {
+          "section_number": "3.5",
+          "title": "Special Considerations for Chat Bot"
+        },
+        {
+          "section_number": "3.6",
+          "title": "RAG and Knowledge Systems"
+        }
+      ]
+    },
+    {
+      "section_number": "4",
+      "title": "Agentic Frameworks and SDK Selection",
+      "page": 20
+    },
+    {
+      "section_number": "5",
+      "title": "Tool Ecosystem and Integrations",
+      "page": 24
+    },
+    {
+      "section_number": "6",
+      "title": "Guardrails, Observability and Governance",
+      "page": 25
+    },
+    {
+      "section_number": "7",
+      "title": "Word Report Generation",
+      "page": 28
+    },
+    {
+      "section_number": "8",
+      "title": "End-to-End Workflows",
+      "page": 29
+    },
+    {
+      "section_number": "9",
+      "title": "Memory",
+      "page": 30
+    },
+    {
+      "section_number": "10",
+      "title": "Tech Stack Summary",
+      "page": 31
+    },
+    {
+      "section_number": "11",
+      "title": "Success Criteria and Eval Metrics",
+      "page": 32
+    }
+  ],
+  "sections": [
+    {
+      "section_number": "1",
+      "title": "Executive Summary",
+      "content": {
+        "purpose": "Agentic AI application for KT risk moderation during managed services engagements.",
+        "problem_statement": "Gap between KT documentation and actual execution realities.",
+        "primary_goals": [
+          "Identify risks proactively",
+          "Highlight SLA risks",
+          "Detect failure-prone areas",
+          "Generate structured Word reports",
+          "Provide chatbot for post-KT support"
+        ],
+        "design_philosophy": {
+          "statement": "AI agents are distributed software systems built around reasoning engines, context management, memory systems, tool ecosystems, and governance frameworks."
+        }
+      }
+    },
+    {
+      "section_number": "2",
+      "title": "Solution Overview & Design Principles",
+      "subsections": [
+        {
+          "section_number": "2.1",
+          "title": "Design Principles Aligned to Best Practices",
+          "principles": [
+            {
+              "id": 1,
+              "name": "Context is King",
+              "application": "Context engineering across KT documents, ticket logs, and process knowledge"
+            },
+            {
+              "id": 2,
+              "name": "System Prompts are Architecture",
+              "application": "Production-grade system prompts with boundaries and safety guardrails"
+            },
+            {
+              "id": 3,
+              "name": "Agent Loop as Control System",
+              "application": "Observe → Reason → Plan → Act → Evaluate → Update Memory"
+            },
+            {
+              "id": 4,
+              "name": "Plan-and-Execute Reasoning",
+              "application": "Structured multi-step workflow orchestration"
+            },
+            {
+              "id": 5,
+              "name": "Design for Multi-Agent from Day One",
+              "application": "Architect for specialist sub-agents"
+            },
+            {
+              "id": 6,
+              "name": "Guardrails are Load-Bearing Walls",
+              "application": "Enterprise-grade safety implementation"
+            },
+            {
+              "id": 7,
+              "name": "Evals are the Test Suite",
+              "application": "Eval-driven development using RAGAS"
+            }
+          ]
+        },
+        {
+          "section_number": "2.2",
+          "title": "Agent Category Classification",
+          "categories": [
+            {
+              "type": "Advisory Agent",
+              "description": "Proactive risk identification and SLA advisory"
+            },
+            {
+              "type": "Conversational Agent",
+              "description": "Post-KT chatbot for ongoing support"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_number": "3",
+      "title": "Core Architecture Design",
+      "architecture_layers": [
+        {
+          "layer_id": 1,
+          "name": "Presentation Layer",
+          "components": [
+            {
+              "component_name": "Application Selector Panel",
+              "type": "Dropdown Interface",
+              "features": [
+                "Application type dropdown",
+                "Dynamic application instance loading",
+                "Metadata-driven population"
+              ]
+            },
+            {
+              "component_name": "Document Upload Module",
+              "type": "File Ingestion",
+              "supported_formats": [
+                "PDF",
+                "DOCX",
+                "XLSX",
+                "CSV",
+                "TXT"
+              ],
+              "features": [
+                "Drag-and-drop upload",
+                "Connector selection",
+                "Progress indicators",
+                "Validation status"
+              ]
+            },
+            {
+              "component_name": "Report Generation Dashboard",
+              "type": "Workflow Dashboard",
+              "features": [
+                "One-click report generation",
+                "Real-time progress tracking",
+                "Downloadable Word output"
+              ]
+            },
+            {
+              "component_name": "Embedded Chatbot Panel",
+              "type": "Conversational UI",
+              "features": [
+                "Persistent chat window",
+                "Conversation history",
+                "Context awareness",
+                "Follow-up support"
+              ]
+            },
+            {
+              "component_name": "Risk Summary View",
+              "type": "Visualization Dashboard",
+              "features": [
+                "Risk heat map",
+                "Key findings cards",
+                "SLA severity indicators"
+              ]
+            }
+          ],
+          "frontend_stack": {
+            "framework": "React JS",
+            "language": "TypeScript",
+            "state_management": [
+              "Redux Toolkit",
+              "Zustand"
+            ],
+            "styling": [
+              "Tailwind CSS",
+              "Ant Design"
+            ],
+            "chat_ui": [
+              "Chatscope",
+              "Custom Widget"
+            ],
+            "document_viewer": "React-PDF",
+            "api_communication": [
+              "Axios",
+              "React Query",
+              "WebSocket"
+            ]
+          }
+        },
+        {
+          "layer_id": 2,
+          "name": "API Gateway & Orchestration Layer",
+          "components": [
+            {
+              "component_name": "API Gateway",
+              "technologies": [
+                "Kong",
+                "AWS API Gateway"
+              ],
+              "responsibilities": [
+                "Route management",
+                "Authentication",
+                "Authorization",
+                "Rate limiting",
+                "Logging",
+                "CORS"
+              ]
+            },
+            {
+              "component_name": "Session Manager",
+              "responsibilities": [
+                "User session tracking",
+                "Context mapping",
+                "Session cleanup"
+              ]
+            },
+            {
+              "component_name": "Request Router",
+              "responsibilities": [
+                "Intent classification",
+                "Pipeline routing"
+              ]
+            }
+          ],
+          "backend_server": {
+            "runtime": [
+              "FastAPI",
+              "Flask"
+            ],
+            "language": "Python",
+            "features": [
+              "Async processing",
+              "WebSocket streaming",
+              "Celery queues",
+              "Redis integration"
+            ]
+          }
+        },
+        {
+          "layer_id": 3,
+          "name": "Agentic Core",
+          "orchestration_pattern": {
+            "type": "Hierarchical Orchestrator",
+            "workflow": "Sequential Sub-Pipelines"
+          },
+          "agents": [
+            {
+              "agent_id": 1,
+              "name": "Orchestrator Agent",
+              "role": "Central coordinator",
+              "reasoning_framework": "Plan-and-Execute",
+              "model_tier": "GPT-4o / Claude Sonnet",
+              "responsibilities": [
+                "Task decomposition",
+                "Sub-agent delegation",
+                "Error handling",
+                "Termination management"
+              ]
+            },
+            {
+              "agent_id": 2,
+              "name": "Document Intake & Process Agent",
+              "role": "Document ingestion and parsing",
+              "processing_pipeline": [
+                "Document type detection",
+                "OCR extraction",
+                "Metadata extraction",
+                "Semantic chunking",
+                "Entity extraction"
+              ],
+              "supported_inputs": [
+                "KT Documents",
+                "Ticket Logs",
+                "ServiceNow exports",
+                "Unstructured documents"
+              ],
+              "output_schema": {
+                "chunks": [],
+                "metadata": {},
+                "entities": []
+              },
+              "model_tier": "GPT-4o-mini"
+            },
+            {
+              "agent_id": 3,
+              "name": "Knowledge Base Builder Agent",
+              "role": "Build vector store and knowledge graph",
+              "responsibilities": [
+                "Generate embeddings",
+                "Index vector DB",
+                "Build knowledge graph",
+                "Freshness scoring",
+                "TTL management"
+              ],
+              "storage_targets": [
+                "Vector DB",
+                "Knowledge Graph"
+              ]
+            },
+            {
+              "agent_id": 4,
+              "name": "Risk Analysis Agent",
+              "role": "Core analytical intelligence",
+              "reasoning_framework": "Reflexion / Self-Refine",
+              "analysis_dimensions": [
+                "KT coverage gaps",
+                "Historical pain points",
+                "SLA risk flags",
+                "Knowledge dependency risks",
+                "Severity classification",
+                "Mitigation recommendations"
+              ],
+              "rag_integration": {
+                "retrieval_type": "Hybrid Retrieval",
+                "techniques": [
+                  "Dense retrieval",
+                  "Sparse retrieval",
+                  "Cross-encoder reranking",
+                  "GraphRAG"
+                ]
+              },
+              "output_schema": {
+                "risk_items": [],
+                "severity": "",
+                "evidence": [],
+                "recommendations": []
+              }
+            },
+            {
+              "agent_id": 5,
+              "name": "Report Generator Agent",
+              "role": "Generate formatted Word document",
+              "features": [
+                "PwC branding",
+                "Heading hierarchy",
+                "Severity color coding",
+                "Table formatting"
+              ],
+              "output_format": [
+                "Structured JSON",
+                "Markdown",
+                "DOCX"
+              ],
+              "tool": "python-docx"
+            },
+            {
+              "agent_id": 6,
+              "name": "Chat Bot Agent",
+              "role": "Post-KT conversational assistant",
+              "reasoning_framework": "ReAct",
+              "capabilities": [
+                "Question answering",
+                "Context retrieval",
+                "Clarification support",
+                "Human escalation"
+              ],
+              "memory_systems": {
+                "episodic_memory": true,
+                "semantic_memory": true,
+                "procedural_memory": true
+              }
+            }
+          ]
+        },
+        {
+          "layer_id": 4,
+          "name": "RAG and Knowledge Systems",
+          "rag_pipeline": [
+            {
+              "stage": 1,
+              "name": "Query Analysis",
+              "components": [
+                "Intent Detector",
+                "Entity Extractor"
+              ]
+            },
+            {
+              "stage": 2,
+              "name": "Query Rewriting",
+              "components": [
+                "Query Reformulator"
+              ]
+            },
+            {
+              "stage": 3,
+              "name": "Hybrid Retrieval",
+              "components": [
+                "Dense Retrieval",
+                "Sparse Retrieval",
+                "RRF"
+              ]
+            },
+            {
+              "stage": 4,
+              "name": "Metadata Filtering",
+              "components": [
+                "Filter Engine"
+              ]
+            },
+            {
+              "stage": 5,
+              "name": "Re-Ranking",
+              "components": [
+                "Cross-Encoder Re-Ranker"
+              ]
+            },
+            {
+              "stage": 6,
+              "name": "GraphRAG",
+              "components": [
+                "Knowledge Graph Traversal"
+              ]
+            },
+            {
+              "stage": 7,
+              "name": "Retrieval Rails",
+              "components": [
+                "Safety Filter",
+                "Freshness Validation"
+              ]
+            }
+          ],
+          "knowledge_stores": [
+            {
+              "store_type": "Vector Database",
+              "technologies": [
+                "Pinecone",
+                "Weaviate",
+                "ChromaDB"
+              ]
+            },
+            {
+              "store_type": "Knowledge Graph",
+              "technologies": [
+                "Neo4j",
+                "Amazon Neptune"
+              ]
+            },
+            {
+              "store_type": "Document Store",
+              "technologies": [
+                "AWS S3",
+                "Azure Blob"
+              ]
+            },
+            {
+              "store_type": "Metadata Store",
+              "technologies": [
+                "PostgreSQL"
+              ]
+            }
+          ],
+          "chunking_strategies": [
+            {
+              "type": "Semantic Chunking",
+              "use_case": "Process knowledge documents"
+            },
+            {
+              "type": "Parent-Child Chunking",
+              "use_case": "Ticket logs"
+            },
+            {
+              "type": "Fixed-Size Chunking",
+              "use_case": "CSV/XLSX exports"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_number": "4",
+      "title": "Agentic Frameworks and SDK Selection",
+      "frameworks": {
+        "orchestration": [
+          {
+            "name": "LangGraph",
+            "role": "Primary orchestration engine",
+            "features": [
+              "Stateful workflows",
+              "Cyclic graphs",
+              "Human-in-the-loop",
+              "Streaming"
+            ]
+          },
+          {
+            "name": "LangChain",
+            "role": "LLM abstraction and tooling",
+            "features": [
+              "Prompt templates",
+              "Tool calling",
+              "Document loaders",
+              "Output parsing"
+            ]
+          }
+        ],
+        "rag_frameworks": [
+          {
+            "name": "LlamaIndex",
+            "role": "Advanced RAG pipeline"
+          },
+          {
+            "name": "LangChain Retrievers",
+            "role": "Lightweight retrieval"
+          }
+        ],
+        "protocols": [
+          {
+            "name": "MCP",
+            "full_form": "Model Context Protocol",
+            "purpose": "Tool connectivity"
+          },
+          {
+            "name": "A2A",
+            "full_form": "Agent-to-Agent Protocol",
+            "purpose": "Cross-agent communication"
+          }
+        ],
+        "guardrails": [
+          {
+            "name": "NVIDIA NeMo Guardrails"
+          },
+          {
+            "name": "Guardrails AI"
+          },
+          {
+            "name": "Llama Guard"
+          }
+        ],
+        "evaluation_tools": [
+          {
+            "name": "RAGAS"
+          },
+          {
+            "name": "LangSmith"
+          },
+          {
+            "name": "OpenTelemetry"
+          }
+        ]
+      }
+    },
+    {
+      "section_number": "5",
+      "title": "Tool Ecosystem and Integrations",
+      "tools": [
+        {
+          "tool_name": "Document Parser Tool",
+          "invoked_by": "Document Intake Agent",
+          "purpose": "Parse structured and unstructured documents"
+        },
+        {
+          "tool_name": "ServiceNow Connector",
+          "invoked_by": "Document Intake Agent",
+          "purpose": "Fetch issue logs"
+        },
+        {
+          "tool_name": "SharePoint / Confluence Connector",
+          "invoked_by": "Document Intake Agent",
+          "purpose": "Fetch process documents"
+        },
+        {
+          "tool_name": "Embedding Generator Tool",
+          "invoked_by": "Knowledge Base Builder",
+          "purpose": "Generate embeddings"
+        },
+        {
+          "tool_name": "Vector DB CRUD Tool",
+          "invoked_by": "RAG Pipeline",
+          "purpose": "Manage vector operations"
+        },
+        {
+          "tool_name": "Knowledge Graph Tool",
+          "invoked_by": "Risk Analysis Agent",
+          "purpose": "Entity relationship operations"
+        },
+        {
+          "tool_name": "Word Document Generator Tool",
+          "invoked_by": "Report Generator Agent",
+          "purpose": "Generate DOCX"
+        },
+        {
+          "tool_name": "Web Search Tool",
+          "invoked_by": "Risk Analysis Agent",
+          "purpose": "Fetch external advisories"
+        }
+      ],
+      "tool_interface_standards": {
+        "protocol": "MCP-inspired",
+        "schema_validation": true,
+        "execution_rails": true
+      }
+    },
+    {
+      "section_number": "6",
+      "title": "Guardrails, Observability and Governance",
+      "guardrails": [
+        {
+          "rail_type": "Input Rails",
+          "functions": [
+            "PII detection",
+            "Injection detection",
+            "Topic filtering"
+          ]
+        },
+        {
+          "rail_type": "Dialog Rails",
+          "functions": [
+            "Conversation control",
+            "Behavior enforcement"
+          ]
+        },
+        {
+          "rail_type": "Retrieval Rails",
+          "functions": [
+            "Relevance filtering",
+            "Freshness validation"
+          ]
+        },
+        {
+          "rail_type": "Execution Rails",
+          "functions": [
+            "Tool parameter validation",
+            "Permission checks"
+          ]
+        },
+        {
+          "rail_type": "Output Rails",
+          "functions": [
+            "Hallucination detection",
+            "PII scrubbing",
+            "Compliance checks"
+          ]
+        }
+      ],
+      "observability": {
+        "structured_logging": true,
+        "distributed_tracing": true,
+        "metrics_dashboard": true,
+        "anomaly_detection": true
+      },
+      "governance": {
+        "prompt_registry": true,
+        "eval_pipeline": true,
+        "incident_response": true,
+        "audit_trail": true
+      }
+    },
+    {
+      "section_number": "7",
+      "title": "Word Report Generation",
+      "report_structure": [
+        "Cover Page",
+        "Executive Summary",
+        "Risk Register Table",
+        "Application-Wise Findings",
+        "KT Coverage Gap Analysis",
+        "SLA Risk Flags",
+        "Recommended Actions",
+        "Appendices"
+      ],
+      "formatting_rules": {
+        "headings": [
+          "Heading 1",
+          "Heading 2",
+          "Heading 3"
+        ],
+        "tables": {
+          "bordered": true,
+          "alternating_rows": true,
+          "severity_color_coding": true
+        },
+        "branding": "PwC Standards",
+        "generation_tool": "python-docx"
+      }
+    },
+    {
+      "section_number": "8",
+      "title": "End-to-End Workflows",
+      "workflows": [
+        {
+          "workflow_name": "Report Generation Flow"
+        },
+        {
+          "workflow_name": "ChatBot Query Flow"
+        }
+      ]
+    },
+    {
+      "section_number": "9",
+      "title": "Memory",
+      "memory_architecture": [
+        {
+          "memory_type": "Episodic Memory",
+          "contents": [
+            "Conversation history",
+            "Past sessions",
+            "Interaction logs"
+          ],
+          "storage": [
+            "Redis",
+            "PostgreSQL"
+          ]
+        },
+        {
+          "memory_type": "Semantic Memory",
+          "contents": [
+            "Knowledge base",
+            "SLA libraries",
+            "Risk patterns"
+          ],
+          "storage": [
+            "Vector DB",
+            "Knowledge Graph"
+          ]
+        },
+        {
+          "memory_type": "Procedural Memory",
+          "contents": [
+            "Learned workflows",
+            "Response templates",
+            "Retrieval strategies"
+          ],
+          "storage": [
+            "Prompt configurations",
+            "Fine-tuning store"
+          ]
+        }
+      ],
+      "critical_practices": [
+        "TTL on memories",
+        "Relevance scoring",
+        "Memory poisoning defense",
+        "Tenant isolation"
+      ]
+    },
+    {
+      "section_number": "10",
+      "title": "Tech Stack Summary",
+      "stack": {
+        "frontend": [
+          "React JS",
+          "TypeScript",
+          "Redux",
+          "Tailwind CSS"
+        ],
+        "api_gateway": [
+          "Kong",
+          "AWS API Gateway"
+        ],
+        "backend": [
+          "FastAPI",
+          "Celery",
+          "Redis"
+        ],
+        "llm_models": [
+          "GPT-4o",
+          "Claude Sonnet",
+          "GPT-4o-mini"
+        ],
+        "vector_db": [
+          "Pinecone",
+          "Weaviate",
+          "ChromaDB"
+        ],
+        "knowledge_graph": [
+          "Neo4j",
+          "Amazon Neptune"
+        ],
+        "storage": [
+          "AWS S3",
+          "Azure Blob"
+        ],
+        "session_db": [
+          "PostgreSQL"
+        ],
+        "guardrails": [
+          "NeMo Guardrails",
+          "Guardrails AI"
+        ],
+        "observability": [
+          "OpenTelemetry",
+          "Datadog",
+          "Jaeger"
+        ],
+        "containerization": [
+          "Docker",
+          "Kubernetes"
+        ]
+      }
+    },
+    {
+      "section_number": "11",
+      "title": "Success Criteria and Eval Metrics",
+      "metrics": [
+        {
+          "metric": "Risk Identification Accuracy",
+          "target": ">= 85%"
+        },
+        {
+          "metric": "Faithfulness (RAGAS)",
+          "target": ">= 0.90"
+        },
+        {
+          "metric": "Context Precision",
+          "target": ">= 0.85"
+        },
+        {
+          "metric": "Report Generation Time",
+          "target": "< 3 minutes"
+        },
+        {
+          "metric": "Chatbot Answer Relevancy",
+          "target": ">= 0.85"
+        },
+        {
+          "metric": "User Satisfaction",
+          "target": ">= 4.0 / 5.0"
+        },
+        {
+          "metric": "Hallucination Rate",
+          "target": "< 5%"
+        }
+      ]
+    }
+  ],
+  "chatbot_special_considerations": {
+    "termination_design": {
+      "conditions": [
+        "Maximum iteration limit",
+        "Confidence threshold",
+        "Task completion signal",
+        "User-initiated stop",
+        "Timeout threshold",
+        "Token budget exhaustion"
+      ]
+    },
+    "loop_prevention": [
+      "Repetition detector",
+      "Progress tracker",
+      "Observation anomaly monitor"
+    ],
+    "recovery_strategies": [
+      "Retry with reformulation",
+      "Fallback retrieval",
+      "Human handoff",
+      "Manus principle"
+    ],
+    "context_compression": {
+      "strategies": [
+        "Sliding window",
+        "Summarization chains",
+        "Note-taking pattern",
+        "Self-baking context",
+        "Stable prefix/dynamic suffix"
+      ],
+      "budget_allocation": {
+        "system_prompt": "15%",
+        "domain_knowledge": "10%",
+        "conversation_summary": "10%",
+        "recent_turns": "20%",
+        "retrieved_chunks": "30%",
+        "tool_outputs": "10%",
+        "safety_buffer": "5%"
+      }
+    },
+    "overflow_prevention": [
+      "Pre-assembly token counting",
+      "Aggressive summarization",
+      "Retrieval chunk limiting",
+      "Tool output truncation",
+      "Circuit breaker"
+    ]
+  },
+  "document_generation_schema": {
+    "input": {
+      "application_name": "string",
+      "uploaded_documents": [],
+      "ticket_logs": [],
+      "risk_analysis_results": []
+    },
+    "intermediate_output": {
+      "structured_json": {
+        "executive_summary": {},
+        "risk_register": [],
+        "application_findings": [],
+        "sla_flags": [],
+        "recommended_actions": [],
+        "appendices": []
+      }
+    },
+    "final_output": {
+      "format": "DOCX",
+      "generator": "python-docx"
+    }
+  },
+  "footer": {
+    "data_classification": "[ ]",
+    "legal_notice": "© 2025 PricewaterhouseCoopers Private Limited. All rights reserved."
+  }
+}
