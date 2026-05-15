@@ -278,26 +278,8 @@ export default function SwimlaneDiagram({
               textTransform: "capitalize",
             }}
           >
-            {/* Background */}
-            <rect width={totalW} height={totalH} fill={WHITE} />
-
-            {/* Title Column */}
-            <rect x={0} y={0} width={TITLE_W} height={totalH} fill={WHITE} />
-            <line x1={TITLE_W} y1={0} x2={TITLE_W} y2={totalH} stroke={BORDER} strokeWidth={1} />
-            <text
-              x={TITLE_W / 2}
-              y={totalH / 2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontWeight={700}
-              fontSize={11}
-              fill="#111"
-              letterSpacing="0.05em"
-              style={{ writingMode: "tb" }}
-              transform={`rotate(180, ${TITLE_W / 2}, ${totalH / 2})`}
-            >
-              {diagramData.title}
-            </text>
+            {diagramData.title}
+          </div>
 
           <div
             style={{
@@ -411,8 +393,8 @@ export default function SwimlaneDiagram({
                   />
                 );
               })}
-            </g>
-          </svg>
+            </svg>
+          </div>
         </div>
       </div>
     );
