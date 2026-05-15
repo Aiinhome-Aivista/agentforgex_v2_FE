@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Download, Loader2 } from "lucide-react";
+import { Document, Packer, Paragraph, ImageRun } from "docx";
+import pptxgen from "pptxgenjs";
+import { Download, Loader2, FileText, Presentation, File as FileIcon, ChevronDown } from "lucide-react";
 import { PDFProvider } from "../../context/PdfContext";
 import PdfTemplate from "./PdfTemplate";
 import { getTechnicalDesign } from "../../services/api";
@@ -13,8 +15,25 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
   const [isExporting, setIsExporting] = useState(false);
   const [technicalDesign, setTechnicalDesign] = useState(null);
   const [toastError, setToastError] = useState(null);
+  const [showFormats, setShowFormats] = useState(false);
   const printContainerRef = useRef();
   const printStyleRef = useRef(null);
+  const menuRef = useRef();
+
+  // Handle clicking outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowFormats(false);
+      }
+    };
+    if (showFormats) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showFormats]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -93,9 +112,85 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
     pdf.save(`${processTitle?.replace(/\s+/g, "_") || "Suggestion"}_Report.pdf`);
   };
 
-  const handleDownload = useCallback(async () => {
+  const exportToWord = async (atoms, processTitle) => {
+    const children = [];
+
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i];
+      const canvas = await html2canvas(atom, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 600; // Standard Word page width in points roughly
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      children.push(
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: imgData,
+              transformation: {
+                width: imgWidth,
+                height: imgHeight,
+              },
+            }),
+          ],
+        })
+      );
+    }
+
+    const doc = new Document({
+      sections: [{
+        children: children,
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${processTitle?.replace(/\s+/g, "_") || "Suggestion"}_Report.docx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportToPowerPoint = async (atoms, processTitle) => {
+    const pptx = new pptxgen();
+
+    for (let i = 0; i < atoms.length; i++) {
+      const atom = atoms[i];
+      const canvas = await html2canvas(atom, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const slide = pptx.addSlide();
+      
+      // Add image to slide, fitting width
+      slide.addImage({
+        data: imgData,
+        x: 0.5,
+        y: 0.5,
+        w: 9, // pptxgenjs uses inches by default
+        h: (canvas.height * 9) / canvas.width,
+        sizing: { type: 'contain', w: 9, h: 5 }
+      });
+    }
+
+    await pptx.writeFile({ fileName: `${processTitle?.replace(/\s+/g, "_") || "Suggestion"}_Report.pptx` });
+  };
+
+  const handleDownload = useCallback(async (format) => {
     setIsExporting(true);
     setToastError(null);
+    setShowFormats(false);
 
     try {
       const currentSuggestionId = suggestion?.id || suggestion?._key;
@@ -104,8 +199,9 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       }
       
       const response = await getTechnicalDesign(currentSuggestionId);
-      if (response?.status && response?.data) {
-        setTechnicalDesign(response.data);
+      const pdfData = response?.data || response;
+      if (pdfData && (pdfData.sections || pdfData.document || pdfData.document_metadata || pdfData.cover_page)) {
+        setTechnicalDesign(pdfData);
       } else {
         throw new Error(response?.message || "Invalid data received from API");
       }
@@ -121,7 +217,13 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       const atoms = await captureAtoms();
       if (atoms.length > 0) {
         const title = suggestion?.title || "Suggestion_Report";
-        await exportToPdf(atoms, title);
+        if (format === "pdf") {
+          await exportToPdf(atoms, title);
+        } else if (format === "word") {
+          await exportToWord(atoms, title);
+        } else if (format === "pptx") {
+          await exportToPowerPoint(atoms, title);
+        }
       }
 
     } catch (error) {
@@ -151,23 +253,53 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
         </div>
       )}
 
-      <button
-        onClick={handleDownload}
-        disabled={isExporting}
-        className="btn-primary px-4 py-2 h-10 shadow-lg shadow-brand-500/20 flex items-center gap-2"
-        title="Export Suggestion to PDF"
-      >
-        {isExporting ? (
-          <>
-            <Loader2 size={18} className="animate-spin text-black" />
-            <span className="text-black font-semibold text-sm">Preparing...</span>
-          </>
-        ) : (
-          <>
-            <Download size={18} className="text-black" />
-          </>
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => setShowFormats(!showFormats)}
+          disabled={isExporting}
+          className="btn-primary px-4 py-2 h-10 shadow-lg shadow-brand-500/20 flex items-center gap-2 rounded-md"
+          title="Export Suggestion"
+        >
+          {isExporting ? (
+            <>
+              <Loader2 size={18} className="animate-spin text-black" />
+            </>
+          ) : (
+            <>
+              <Download size={18} className="text-black" />
+              <ChevronDown size={14} className="text-black opacity-50" />
+            </>
+          )}
+        </button>
+
+        {showFormats && (
+          <div className="absolute right-0 top-12 w-48 bg-[#0e0e10] border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="p-2 flex flex-col gap-1">
+              <button
+                onClick={() => handleDownload("pdf")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <FileIcon size={14} className="text-red-500" />
+                <span>Export as PDF</span>
+              </button>
+              <button
+                onClick={() => handleDownload("word")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <FileText size={14} className="text-blue-500" />
+                <span>Export as Word</span>
+              </button>
+              <button
+                onClick={() => handleDownload("pptx")}
+                className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
+              >
+                <Presentation size={14} className="text-orange-500" />
+                <span>Export as PPT</span>
+              </button>
+            </div>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Hidden container — moved to body during print */}
       <div

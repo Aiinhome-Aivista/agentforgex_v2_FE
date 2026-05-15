@@ -9,8 +9,9 @@ const PAGE_PADDING = 60;
 export default function PdfTemplate({ data, suggestionTitle }) {
   if (!data) return null;
 
-  const docMeta = data.document || data.document_metadata;
+  const docMeta = data.cover_page || data.document || data.document_metadata;
   const { sections } = data;
+  const tocItems = data.table_of_contents || sections;
 
   const renderGenericData = (content, level = 0) => {
     if (content === null || content === undefined) return null;
@@ -132,6 +133,11 @@ export default function PdfTemplate({ data, suggestionTitle }) {
           <h1 style={{ fontSize: 46, fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 24, textWrap: "balance" }}>
             {suggestionTitle || docMeta?.title}
           </h1>
+          {docMeta?.subtitle && (
+            <p style={{ fontSize: 20, fontWeight: 500, color: "#d1d5db", marginTop: 16 }}>
+              {docMeta.subtitle}
+            </p>
+          )}
         </div>
 
         {/* Bottom bar */}
@@ -165,11 +171,12 @@ export default function PdfTemplate({ data, suggestionTitle }) {
           Table of Contents
         </h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: "85%" }}>
-          {sections?.map((sec, idx) => (
+          {tocItems?.map((sec, idx) => (
             <div key={idx} style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981", minWidth: 24 }}>{String(sec.section_no || sec.section_number).padStart(2, '0')}</span>
               <span style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>{sec.title}</span>
               <span style={{ borderBottom: "2px dotted #e5e7eb", flexGrow: 1, margin: "0 8px", position: "relative", top: -4 }}></span>
+              {sec.page && <span style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>{sec.page}</span>}
             </div>
           ))}
         </div>
