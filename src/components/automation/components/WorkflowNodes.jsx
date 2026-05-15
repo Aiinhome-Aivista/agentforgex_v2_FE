@@ -11,6 +11,13 @@ import {
   wrapText,
 } from "../utils/workflowUtils";
 
+const getNodeAccent = (n) => {
+  if (n.agentInfo) {
+    return LANE_ACCENTS[4]; // Rose (Red)
+  }
+  return LANE_ACCENTS[1]; // Emerald (Green)
+};
+
 /* ═══════════════════════════════════════════════════════════
    PROCESS NODE — Clean card with colored left accent bar
 ═══════════════════════════════════════════════════════════ */
@@ -18,7 +25,8 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const agentInfo = n.agentInfo;
-  const laneAccent = LANE_ACCENTS[n.laneIndex % LANE_ACCENTS.length];
+  const laneAccent = getNodeAccent(n);
+  const suggestionAccent = LANE_ACCENTS[0]; // Blue
   const lines = wrapText(n.label);
   const x = n.cx - NODE_W / 2;
   const y = n.cy - NODE_H / 2;
@@ -67,12 +75,12 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
           <text
             key={i}
             x={0}
-            y={(i - (lines.length - 1) / 2) * 15}
+            y={(i - (lines.length - 1) / 2) * 18}
             textAnchor="start"
             dominantBaseline="middle"
             fill={COLORS.node_text}
-            fontSize={11}
-            fontWeight={600}
+            fontSize={14}
+            fontWeight={700}
             fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
           >
             {ln}
@@ -94,15 +102,15 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
             <div
               className={`w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 ${isOpen ? "ring-2 ring-offset-1" : ""}`}
               style={{
-                borderColor: laneAccent.accent + "60",
+                borderColor: LANE_ACCENTS[1].accent + "60",
                 borderWidth: 1.5,
-                ...(isOpen ? { ringColor: laneAccent.accent } : {}),
+                ...(isOpen ? { ringColor: LANE_ACCENTS[1].accent } : {}),
               }}
               onClick={toggleAgent}
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >
-              <GitBranch size={13} style={{ color: laneAccent.accent }} className="stroke-[2]" />
+              <GitBranch size={13} style={{ color: LANE_ACCENTS[1].accent }} className="stroke-[2]" />
             </div>
 
             {/* Agent tooltip card */}
@@ -112,7 +120,7 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
               {/* Header */}
               <div
                 className="text-white p-3 flex items-center gap-2.5"
-                style={{ background: `linear-gradient(135deg, ${laneAccent.accent}, ${laneAccent.accent}dd)` }}
+                style={{ background: `linear-gradient(135deg, ${suggestionAccent.accent}, ${suggestionAccent.accent}dd)` }}
               >
                 <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
                   <Bot size={16} className="stroke-[2]" />
@@ -190,8 +198,8 @@ export function StartNode({ n, onDragStart }) {
         textAnchor="middle"
         dominantBaseline="central"
         fill={COLORS.start_text}
-        fontSize={12}
-        fontWeight={700}
+        fontSize={15}
+        fontWeight={800}
         fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
       >
         Start
@@ -228,12 +236,12 @@ export function DiamondNode({ n, onDragStart }) {
         <text
           key={i}
           x={cx}
-          y={cy + (i - (lines.length - 1) / 2) * 12}
+          y={cy + (i - (lines.length - 1) / 2) * 15}
           textAnchor="middle"
           dominantBaseline="central"
           fill={COLORS.decision_text}
-          fontSize={9}
-          fontWeight={700}
+          fontSize={12}
+          fontWeight={800}
           fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
           pointerEvents="none"
         >
@@ -254,7 +262,7 @@ export function AgentNode({ parentNode, offset, onDragStart }) {
   const y = parentNode.cy + relY;
   const width = 260;
   const height = 180;
-  const laneAccent = LANE_ACCENTS[parentNode.laneIndex % LANE_ACCENTS.length];
+  const laneAccent = LANE_ACCENTS[0]; // Blue
 
   return (
     <g

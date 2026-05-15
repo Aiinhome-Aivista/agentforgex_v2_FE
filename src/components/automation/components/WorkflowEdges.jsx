@@ -18,10 +18,10 @@ export function Defs({ markerId = MARKER_ID }) {
       <marker
         id={markerId}
         viewBox="0 0 10 10"
-        refX="9"
+        refX="8"
         refY="5"
-        markerWidth="6"
-        markerHeight="6"
+        markerWidth="8"
+        markerHeight="8"
         orient="auto-start-reverse"
       >
         <path d="M 0 1 L 8 5 L 0 9 z" fill={COLORS.edge} />
@@ -58,7 +58,7 @@ export function Seg({ x1, y1, x2, y2, label, markerId = MARKER_ID }) {
       <line
         x1={x1} y1={y1} x2={x2} y2={y2}
         stroke={COLORS.edge}
-        strokeWidth={1.2}
+        strokeWidth={1.5}
         markerEnd={`url(#${markerId})`}
         fill="none"
       />
@@ -121,7 +121,7 @@ export function Elbow({ pts, label, markerId = MARKER_ID }) {
         d={d}
         fill="none"
         stroke={COLORS.edge}
-        strokeWidth={1.2}
+        strokeWidth={1.5}
         markerEnd={`url(#${markerId})`}
       />
       <EdgeLabel x={mid[0]} y={mid[1] - 8} label={label} />
@@ -135,10 +135,31 @@ export function Elbow({ pts, label, markerId = MARKER_ID }) {
 export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
   const GAP = 6; // padding from node border
 
+  // Count incoming edges per node to calculate stagger offsets
+  const targetCounts = {};
+  flow.forEach((conn) => {
+    targetCounts[conn.to] = (targetCounts[conn.to] || 0) + 1;
+  });
+  const targetSeen = {};
+
   return flow.map((conn, i) => {
     const f = nm[conn.from];
     const t = nm[conn.to];
     if (!f || !t) return null;
+
+    const tCount = targetCounts[conn.to];
+    const tIndex = targetSeen[conn.to] || 0;
+    targetSeen[conn.to] = tIndex + 1;
+
+    // 16px spread per incoming arrow to separate arrowheads
+    const offsetStep = 16;
+    const totalWidth = (tCount - 1) * offsetStep;
+    const staggerOffset = tCount > 1 && t.type !== "decision" 
+      ? (tIndex * offsetStep) - (totalWidth / 2) 
+      : 0;
+
+    // Stagger mid points slightly so overlapping orthogonal segments separate
+    const midStagger = tCount > 1 ? (tIndex * 8) - ((tCount - 1) * 4) : 0;
 
     const edgeLabel = conn.label || "";
 
@@ -167,7 +188,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           y2 = t.cy;
         } else {
           x2 = t.cx - NODE_W / 2;
-          y2 = t.cy;
+          y2 = t.cy + staggerOffset;
         }
 
         // If same row — straight horizontal
@@ -184,7 +205,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         }
 
         // Different row — orthogonal elbow: right → down/up → right
-        const midX = (x1 + x2) / 2;
+        const midX = (x1 + x2) / 2 + midStagger;
         return (
           <Elbow
             key={i}
@@ -207,7 +228,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           ? f.cy + (START_R * 1.3) / 2
           : f.cy + NODE_H / 2;
 
-        const x2 = t.cx;
+        const x2 = t.cx + staggerOffset;
         const y2 = t.type === "decision"
           ? t.cy - DIAMOND_S
           : t.cy - NODE_H / 2;
@@ -226,7 +247,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         }
 
         // Different column — orthogonal: down → across → down
-        const midY = (y1 + y2) / 2;
+        const midY = (y1 + y2) / 2 + midStagger;
         return (
           <Elbow
             key={i}
@@ -246,7 +267,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
       case "yes": {
         const x1 = f.cx;
         const y1 = f.cy + DIAMOND_S;
-        const x2 = t.cx;
+        const x2 = t.cx + staggerOffset;
         const y2 = t.cy - NODE_H / 2;
 
         // Label position
@@ -268,7 +289,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         }
 
         // Different column — orthogonal routing
-        const midY = (y1 + y2) / 2;
+        const midY = (y1 + y2) / 2 + midStagger;
         return (
           <g key={i}>
             <Elbow
@@ -289,7 +310,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
       case "no": {
         const x1 = f.cx + DIAMOND_S;
         const y1 = f.cy;
-        const x2 = t.cx;
+        const x2 = t.cx + staggerOffset;
         const y2 = t.cy - NODE_H / 2;
 
         // Label position
@@ -316,11 +337,11 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
       case "diagonal_down": {
         const x1 = f.cx;
         const y1 = f.cy + NODE_H / 2;
-        const x2 = t.cx;
+        const x2 = t.cx + staggerOffset;
         const y2 = t.cy - NODE_H / 2;
 
         // Use orthogonal routing instead of true diagonal
-        const midY = (y1 + y2) / 2;
+        const midY = (y1 + y2) / 2 + midStagger;
         return (
           <Elbow
             key={i}
