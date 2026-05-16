@@ -151,8 +151,8 @@ function drawCover(d, data) {
   const meta = [
     ["DATE",           new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
     ["SYSTEM",         process.erp_system || "Enterprise"],
-    ["SCORE",          `${process.automation_score}% Potential`],
-    ["CLASSIFICATION", "Confidential"],
+    ["SCORE",            `${Math.round(process.automation_score || 0)}%`],
+    ["CLASSIFICATION",   "Confidential"],
   ];
   const colW = CW / 2;
   meta.forEach(([label, val], i) => {
@@ -161,8 +161,8 @@ function drawCover(d, data) {
     setFont(d, "bold", 8);
     ink(d, C.accent);
     text(d, label, x, y);
-    setFont(d, "bold", 13);
-    ink(d, C.navy);
+    setFont(d, "bold", 18);
+    ink(d, label === "SCORE" ? C.accent : C.navy);
     text(d, String(val), x, y + 8);
   });
 
