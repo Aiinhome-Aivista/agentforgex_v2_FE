@@ -198,11 +198,11 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
                 </button>
               ))}
             </div>
-            <div className="px-3 pb-2 pt-0">
+            {/* <div className="px-3 pb-2 pt-0">
               <p className="text-[8px] text-white/20 uppercase tracking-widest text-center">
                 Real swimlane • Native vector • Fast
               </p>
-            </div>
+            </div> */}
           </div>
         )}
       </div>

@@ -270,16 +270,20 @@ function addWorkflowSlide(pptx, flowData) {
 
     if (Math.abs(y1 - y2) < 0.01) {
       // Straight horizontal
+      const w = x2 - x1;
       slide.addShape("line", {
-        x: x1, y: y1, w: x2 - x1, h: 0,
+        x: w < 0 ? x2 : x1, y: y1, w: Math.abs(w), h: 0,
+        flipH: w < 0,
         line: { color, width: 1, endArrowType: "triangle" },
       });
     } else {
       // Right-angle elbow: x1,y1 → mid,y1 → mid,y2 → x2,y2
       const midX = (x1 + x2) / 2;
-      slide.addShape("line", { x: x1,   y: y1, w: midX - x1, h: 0, line: { color, width: 1 } });
+      const w1 = midX - x1;
+      slide.addShape("line", { x: w1 < 0 ? midX : x1, y: y1, w: Math.abs(w1), h: 0, flipH: w1 < 0, line: { color, width: 1 } });
       slide.addShape("line", { x: midX, y: Math.min(y1, y2), w: 0, h: Math.abs(y2 - y1), line: { color, width: 1 } });
-      slide.addShape("line", { x: midX, y: y2, w: x2 - midX, h: 0, line: { color, width: 1, endArrowType: "triangle" } });
+      const w2 = x2 - midX;
+      slide.addShape("line", { x: w2 < 0 ? x2 : midX, y: y2, w: Math.abs(w2), h: 0, flipH: w2 < 0, line: { color, width: 1, endArrowType: "triangle" } });
     }
 
     if (edge.label) {
@@ -637,7 +641,8 @@ export async function generatePPTX(data, title = "Technical_Design", flowData = 
   pptx.defineLayout({ name: "STD_10X75", width: 10, height: 7.5 });
   pptx.layout = "STD_10X75";
   pptx.author = "AgentForgeX";
-  pptx.title  = title;
+  // Sanitize title for metadata properties (remove non-ascii for stability)
+  pptx.title  = (title || "Technical_Design").replace(/[^\x00-\x7F]/g, " ");
 
   // Define a single white-paper master with footer
   pptx.defineSlideMaster({
