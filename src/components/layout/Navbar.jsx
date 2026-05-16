@@ -32,7 +32,7 @@ export default function Navbar() {
             <Layers size={14} />Workspaces
           </Link>
           <Link to="/blog" className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/50 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-            <Newspaper size={14} />Blog
+            <Newspaper size={14} />Blogs
           </Link>
           {user?.is_admin ? (
             <Link to="/admin" className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 rounded-lg transition-all">

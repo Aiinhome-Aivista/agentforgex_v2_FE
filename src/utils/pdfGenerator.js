@@ -185,7 +185,7 @@ function drawCover(d, data, suggestionTitle) {
   const meta = [
     ["DATE",           cp.date           || "—"],
     ["VERSION",        cp.version        || "Draft V1.0"],
-    ["ORGANIZATION",   "Aiinhome"],
+    ["ORGANIZATION",   "AgentForge"],
     ["CLASSIFICATION", cp.classification || "Confidential"],
   ];
   const colW = CW / 2;
