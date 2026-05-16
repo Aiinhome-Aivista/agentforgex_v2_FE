@@ -33,7 +33,7 @@ export async function generateProcessPPTX(data) {
   cover.addText("AgentForgeX", { x: 0.5, y: 1, w: 4, h: 1, fontSize: 32, bold: true, color: T.paper });
   cover.addText("PROCESS INTELLIGENCE REPORT", { x: 0.5, y: 1.8, w: 4, h: 0.5, fontSize: 12, color: T.brand, bold: true });
   cover.addText(process.title || "Process Analysis", { x: 0.5, y: 3.5, w: 9, h: 1, fontSize: 28, bold: true, color: T.paper });
-  cover.addText(`Automation Potential: ${process.automation_score}%`, { x: 0.5, y: 4.5, w: 9, h: 0.5, fontSize: 18, color: T.brand });
+  cover.addText(`Automation Potential: ${Math.round(process.automation_score || 0)}%`, { x: 0.5, y: 4.5, w: 9, h: 0.5, fontSize: 18, color: T.brand });
 
   // 2. Insights
   const insSlide = pptx.addSlide();

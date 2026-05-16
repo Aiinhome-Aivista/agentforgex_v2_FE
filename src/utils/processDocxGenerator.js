@@ -75,7 +75,12 @@ function buildCover(process) {
         new TableRow({
           children: [
             dataCell("Automation Score", HEX.surface),
-            dataCell(`${process.automation_score}%`, HEX.surface),
+            new TableCell({
+              children: [p(run(`${Math.round(process.automation_score || 0)}%`, { color: HEX.brand, bold: true, size: 20 }))],
+              shading: { type: ShadingType.SOLID, color: HEX.surface },
+              borders: borders(HEX.rule),
+              margins: { top: 80, bottom: 80, left: 120, right: 120 },
+            }),
           ]
         }),
         new TableRow({

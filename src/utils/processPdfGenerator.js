@@ -149,20 +149,20 @@ function drawCover(d, data) {
   rect(d, ML, 175, CW, 0.6, C.accent);
 
   const meta = [
-    ["DATE",           new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
-    ["SYSTEM",         process.erp_system || "Enterprise"],
-    ["SCORE",          `${process.automation_score}% Potential`],
-    ["CLASSIFICATION", "Confidential"],
+    ["DATE",             new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
+    ["SYSTEM",           process.erp_system || "Enterprise"],
+    ["SCORE",            `${Math.round(process.automation_score || 0)}%`],
+    ["CLASSIFICATION",   "Confidential"],
   ];
   const colW = CW / 2;
   meta.forEach(([label, val], i) => {
     const col = i % 2, row = Math.floor(i / 2);
     const x = ML + col * colW, y = 185 + row * 22;
     setFont(d, "bold", 8);
-    ink(d, C.accent);
+    ink(d, C.accent); // Restore label in green
     text(d, label, x, y);
-    setFont(d, "bold", 13);
-    ink(d, C.navy);
+    setFont(d, "bold", 15);
+    ink(d, label === "SCORE" ? C.accent : C.navy); // Emerald for score value
     text(d, String(val), x, y + 8);
   });
 
