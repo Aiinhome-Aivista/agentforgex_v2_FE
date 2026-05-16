@@ -13,7 +13,10 @@ import {
   Minimize2,
   RefreshCw,
   Loader2,
+  Download,
 } from "lucide-react";
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 import { getProcessFlow } from "../../services/api";
 import {
   TITLE_W,
@@ -53,6 +56,7 @@ export default function SwimlaneDiagram({
   const lastFetchedId = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 50, zoom: 0.6 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const markerId = useId().replace(/:/g, "");
 
   const layoutBase = useMemo(
@@ -135,6 +139,46 @@ export default function SwimlaneDiagram({
     setViewport({ x: 0, y: 50, zoom: 0.6 });
     setNodes(layoutBase.nodeMap);
     setAgentOffsets({});
+  };
+
+  const handleDownloadPdf = async () => {
+    const prevViewport = { ...viewport };
+    setViewport({ x: 50, y: 50, zoom: 1 });
+    setIsExportingPdf(true);
+    
+    setTimeout(async () => {
+      const element = document.getElementById(`swimlane-viewport-${markerId}`);
+      if (!element) return;
+
+      try {
+        const dataUrl = await toPng(element, {
+          backgroundColor: '#F8FAFC',
+          pixelRatio: 3,
+          cacheBust: true,
+          width: TITLE_W + LABEL_W + svgW + 50,
+          height: Math.max(svgH, 600) + 50,
+          style: { transform: 'scale(1)' }
+        });
+
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: 'a2', 
+        });
+
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${diagramData.title ? diagramData.title.replace(/\s+/g, "_") : 'workflow'}.pdf`);
+      } catch (error) {
+        console.error('PDF export failed:', error);
+      } finally {
+        setViewport(prevViewport);
+        setIsExportingPdf(false);
+      }
+    }, 500);
   };
 
   const onMouseDown = (e) => {
@@ -451,6 +495,7 @@ export default function SwimlaneDiagram({
             { icon: ZoomIn, onClick: () => handleZoom(1.15), title: "Zoom In" },
             { icon: ZoomOut, onClick: () => handleZoom(0.85), title: "Zoom Out" },
             { icon: RefreshCw, onClick: handleReset, title: "Reset View" },
+            { icon: Download, onClick: handleDownloadPdf, title: "Download PDF" },
             {
               icon: isFullscreen ? Minimize2 : Maximize2,
               onClick: toggleFullscreen,
@@ -505,12 +550,13 @@ export default function SwimlaneDiagram({
           }}
         >
           <div
+            id={`swimlane-viewport-${markerId}`}
             style={{
               position: "absolute",
               top: 0,
               left: 0,
-              width: "100%",
-              height: "100%",
+              width: Math.max(TITLE_W + LABEL_W + svgW, 2000),
+              height: Math.max(svgH, 600),
               transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
               transformOrigin: "0 0",
               transition:
@@ -655,11 +701,12 @@ export default function SwimlaneDiagram({
                       isOpen={isOpen}
                       toggleAgent={() => toggleAgent(n.id)}
                       onDragStart={onMouseDown}
+                      isExportingPdf={isExportingPdf}
                     />
                   );
                 })}
 
-                {Array.from(openAgentIds).map((id) => {
+                {!isExportingPdf && Array.from(openAgentIds).map((id) => {
                   const n = nodes[id];
                   if (!n) return null;
                   return (

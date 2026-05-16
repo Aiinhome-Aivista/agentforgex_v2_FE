@@ -21,7 +21,7 @@ const getNodeAccent = (n) => {
 /* ═══════════════════════════════════════════════════════════
    PROCESS NODE — Clean card with colored left accent bar
 ═══════════════════════════════════════════════════════════ */
-export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
+export function ProcessNode({ n, isOpen, toggleAgent, onDragStart, isExportingPdf }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const agentInfo = n.agentInfo;
@@ -114,47 +114,49 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
             </div>
 
             {/* Agent tooltip card */}
-            <div
-              className={`absolute bottom-[120%] right-0 mb-3 w-64 bg-white rounded-xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-200 overflow-hidden transition-all duration-300 z-[110] origin-bottom-right ${showTooltip ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-3 pointer-events-none"}`}
-            >
-              {/* Header */}
+            {!isExportingPdf && (
               <div
-                className="text-white p-3 flex items-center gap-2.5"
-                style={{ background: `linear-gradient(135deg, ${suggestionAccent.accent}, ${suggestionAccent.accent}dd)` }}
+                className={`absolute bottom-[120%] right-0 mb-3 w-64 bg-white rounded-xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-200 overflow-hidden transition-all duration-300 z-[110] origin-bottom-right ${showTooltip ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 translate-y-3 pointer-events-none"}`}
               >
-                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
-                  <Bot size={16} className="stroke-[2]" />
+                {/* Header */}
+                <div
+                  className="text-white p-3 flex items-center gap-2.5"
+                  style={{ background: `linear-gradient(135deg, ${suggestionAccent.accent}, ${suggestionAccent.accent}dd)` }}
+                >
+                  <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+                    <Bot size={16} className="stroke-[2]" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">
+                      {agentInfo.type}
+                    </span>
+                    <span className="font-bold text-xs tracking-tight">
+                      {agentInfo.title}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">
-                    {agentInfo.type}
-                  </span>
-                  <span className="font-bold text-xs tracking-tight">
-                    {agentInfo.title}
-                  </span>
-                </div>
-              </div>
 
-              {/* Content */}
-              <div className="p-3 bg-gray-50/50">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Layers size={12} className="text-gray-400" />
-                  <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Key Tasks
-                  </span>
+                {/* Content */}
+                <div className="p-3 bg-gray-50/50">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Layers size={12} className="text-gray-400" />
+                    <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider">
+                      Key Tasks
+                    </span>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {(agentInfo.tasks || []).map((task, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle size={12} className="text-emerald-500 mt-0.5 shrink-0" />
+                        <span className="text-[10px] font-medium text-gray-600 leading-snug">
+                          {task}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-1.5">
-                  {(agentInfo.tasks || []).map((task, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle size={12} className="text-emerald-500 mt-0.5 shrink-0" />
-                      <span className="text-[10px] font-medium text-gray-600 leading-snug">
-                        {task}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            </div>
+            )}
           </div>
         </foreignObject>
       )}
