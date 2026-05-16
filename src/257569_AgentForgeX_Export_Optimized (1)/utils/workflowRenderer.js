@@ -1,0 +1,207 @@
+/**
+ * workflowRenderer.js
+ *
+ * Shared swimlane workflow layout engine. Consumed by pdfGenerator,
+ * docxGenerator, and pptxGenerator so they all draw the SAME real
+ * business swimlane (the Procure-to-Pay flow returned by /processes/:id/flow).
+ *
+ * The output is pure data (positions in mm) — each generator scales it to
+ * its own unit (mm for PDF, twips/EMU for DOCX, inches for PPTX).
+ *
+ * Input shape (matches getProcessFlow API response):
+ * {
+ *   title: "Procure-to-Pay …",
+ *   lanes: [
+ *     { id, label,
+ *       nodes: [{ id, type, label, column }, ...] },
+ *     ...
+ *   ],
+ *   flow: [{ from, to, label? }, ...]
+ * }
+ */
+
+// ─── Enterprise palette (white-background swimlane) ──────────────────────────
+export const PALETTE = {
+  bg:            "#FFFFFF",
+  paper:         "#F8FAFC",
+  ink:           "#0F172A",
+  inkSoft:       "#475569",
+  border:        "#E2E8F0",
+  edge:          "#475569",
+  edgeLight:     "#94A3B8",
+  startFill:     "#D1FAE5",
+  startStroke:   "#6EE7B7",
+  startText:     "#047857",
+  diamondFill:   "#E0E7FF",
+  diamondStroke: "#A5B4FC",
+  diamondText:   "#3730A3",
+  nodeFill:      "#FFFFFF",
+  nodeStroke:    "#D1D5DB",
+  nodeText:      "#1F2937",
+};
+
+export const LANE_ACCENTS = [
+  { accent: "#3B82F6", tint: "#EFF6FF", text: "#1E40AF" }, // Blue
+  { accent: "#8B5CF6", tint: "#F5F3FF", text: "#5B21B6" }, // Violet
+  { accent: "#10B981", tint: "#ECFDF5", text: "#065F46" }, // Emerald
+  { accent: "#F59E0B", tint: "#FFFBEB", text: "#92400E" }, // Amber
+  { accent: "#F43F5E", tint: "#FFF1F2", text: "#9F1239" }, // Rose
+  { accent: "#06B6D4", tint: "#ECFEFF", text: "#155E75" }, // Cyan
+  { accent: "#6366F1", tint: "#EEF2FF", text: "#3730A3" }, // Indigo
+];
+
+/** Detect whether flow data has the structure we can render. */
+export function hasFlowData(flow) {
+  return !!(
+    flow &&
+    Array.isArray(flow.lanes) &&
+    flow.lanes.length > 0 &&
+    flow.lanes.some((l) => Array.isArray(l.nodes) && l.nodes.length > 0)
+  );
+}
+
+/**
+ * Compute a pure-data layout in millimetres. Each lane occupies one row;
+ * all columns used across all lanes share a single horizontal grid so the
+ * diagram reads as a true swimlane (BPMN-style).
+ */
+export function layoutWorkflow(flow, opts = {}) {
+  const cfg = {
+    nodeW:          opts.nodeW          ?? 48,
+    nodeH:          opts.nodeH          ?? 18,
+    colGap:         opts.colGap         ?? 14,
+    laneHeight:     opts.laneHeight     ?? 30,
+    laneLabelWidth: opts.laneLabelWidth ?? 32,
+    titleHeight:    opts.titleHeight    ?? 10,
+    padding:        opts.padding        ?? 4,
+  };
+  const { nodeW, nodeH, colGap, laneHeight, laneLabelWidth, titleHeight, padding } = cfg;
+
+  if (!hasFlowData(flow)) {
+    return { title: flow?.title || "", width: 0, height: 0, lanes: [], nodes: [], edges: [] };
+  }
+
+  // 1. Collect every used column index across all lanes and densify them.
+  const usedColsSet = new Set();
+  flow.lanes.forEach((lane) => {
+    (lane.nodes || []).forEach((n) => usedColsSet.add(n.column ?? 1));
+  });
+  const usedCols = Array.from(usedColsSet).sort((a, b) => a - b);
+  const nCols = Math.max(1, usedCols.length);
+  const colIndexMap = new Map();
+  usedCols.forEach((c, i) => colIndexMap.set(c, i));
+
+  const contentW = nCols * nodeW + (nCols - 1) * colGap;
+  const totalW   = padding * 2 + laneLabelWidth + contentW;
+
+  const colLeftX = (logicalCol) => {
+    const idx = colIndexMap.get(logicalCol) ?? 0;
+    return padding + laneLabelWidth + idx * (nodeW + colGap);
+  };
+
+  // 2. Lay out each lane on its own row.
+  const lanes = [];
+  const nodesById = {};
+  const allNodes = [];
+  let cursorY = padding + titleHeight;
+
+  flow.lanes.forEach((lane, li) => {
+    const accent = LANE_ACCENTS[li % LANE_ACCENTS.length];
+    const laneTop = cursorY;
+
+    lanes.push({
+      id:     lane.id,
+      label:  lane.label || "",
+      top:    laneTop,
+      height: laneHeight,
+      accent: accent.accent,
+      tint:   accent.tint,
+      text:   accent.text,
+      index:  li,
+    });
+
+    (lane.nodes || []).forEach((node) => {
+      const type = (node.type || "process").toLowerCase();
+      const col  = node.column ?? 1;
+      const x    = colLeftX(col);
+      const y    = laneTop + (laneHeight - nodeH) / 2;
+      let fill, stroke, text;
+
+      if (type === "start" || type === "end") {
+        fill = PALETTE.startFill;
+        stroke = PALETTE.startStroke;
+        text = PALETTE.startText;
+      } else if (type === "decision") {
+        fill = PALETTE.diamondFill;
+        stroke = PALETTE.diamondStroke;
+        text = PALETTE.diamondText;
+      } else {
+        fill = PALETTE.nodeFill;
+        stroke = accent.accent;
+        text = PALETTE.nodeText;
+      }
+
+      const laidNode = {
+        id:        node.id,
+        type,
+        label:     node.label || "",
+        x, y,
+        w:         nodeW,
+        h:         nodeH,
+        cx:        x + nodeW / 2,
+        cy:        y + nodeH / 2,
+        fill, stroke, text,
+        accent:    accent.accent,
+        laneIndex: li,
+        col,
+      };
+      nodesById[node.id] = laidNode;
+      allNodes.push(laidNode);
+    });
+
+    cursorY += laneHeight;
+  });
+
+  // 3. Compute edge endpoints.
+  const edges = (flow.flow || []).map((e) => {
+    const a = nodesById[e.from];
+    const b = nodesById[e.to];
+    if (!a || !b) return null;
+
+    let fromX, fromY, toX, toY;
+    if (a.col !== b.col) {
+      if (b.col > a.col) {
+        fromX = a.x + a.w; fromY = a.cy;
+        toX   = b.x;       toY   = b.cy;
+      } else {
+        fromX = a.x;       fromY = a.cy;
+        toX   = b.x + b.w; toY   = b.cy;
+      }
+    } else {
+      if (b.cy > a.cy) {
+        fromX = a.cx; fromY = a.y + a.h;
+        toX   = b.cx; toY   = b.y;
+      } else {
+        fromX = a.cx; fromY = a.y;
+        toX   = b.cx; toY   = b.y + b.h;
+      }
+    }
+
+    return {
+      fromId: e.from,
+      toId:   e.to,
+      fromX, fromY, toX, toY,
+      kind:   a.laneIndex === b.laneIndex ? "intralane" : "interlane",
+      label:  e.label || "",
+    };
+  }).filter(Boolean);
+
+  return {
+    title:  flow.title || "Process Workflow",
+    width:  totalW,
+    height: cursorY + padding,
+    lanes,
+    nodes:  allNodes,
+    edges,
+  };
+}
