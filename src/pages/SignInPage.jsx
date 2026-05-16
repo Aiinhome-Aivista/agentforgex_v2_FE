@@ -30,8 +30,7 @@ export default function SignInPage() {
     setToken(res.token)
     setStoredUser(res.data)
     login(res.data)
-    if (!res.data.plan) navigate('/pricing', { replace: true })
-    else navigate('/home', { replace: true })
+    navigate('/home', { replace: true })
   }
 
   const handleEmailSignIn = async (e) => {

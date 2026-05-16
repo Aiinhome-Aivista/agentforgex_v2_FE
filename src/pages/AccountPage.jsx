@@ -152,175 +152,19 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Current plan */}
-      <div className="card p-6 mb-6">
-        <div className="flex flex-wrap items-start gap-4 justify-between">
-          <div className="flex items-center gap-3">
-            <span
-              className={`w-12 h-12 rounded-xl flex items-center justify-center
-              ${
-                planCode === "premium"
-                  ? "bg-purple-500/20 text-purple-300"
-                  : planCode === "basic"
-                    ? "bg-brand-500/20 text-brand-400"
-                    : "bg-white/10 text-white/70"
-              }`}
-            >
-              <Icon size={22} />
-            </span>
-            <div>
-              <div className="text-xs uppercase tracking-wider text-white/40 flex items-center gap-2 mb-1">
-                <span>Current plan</span>
-                {sub?.remaining_days > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                    {sub?.remaining_days} {sub?.remaining_days === 1 ? "day" : "days"} left
-                  </span>
-                )}
-              </div>
-
-              <div className="text-2xl font-black">
-                {sub?.plan_name ||
-                  (planCode
-                    ? planCode.charAt(0).toUpperCase() + planCode.slice(1)
-                    : "No active plan")}
-              </div>
-              {sub?.period_end && (
-                <div className="text-xs text-white/40 flex items-center gap-1.5 mt-1">
-                  <CalendarDays size={12} />
-                  Renews / expires on{" "}
-                  {new Date(sub.period_end).toLocaleDateString()}
-                </div>
-              )}
-            </div>
+      {/* Simple Account Info */}
+      <div className="card p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center">
+            <UserCircle2 size={24} />
           </div>
-          <button
-            onClick={() => navigate("/pricing")}
-            className="btn-primary text-sm"
-          >
-            {sub ? "Change plan" : "Choose a plan"} <ArrowRight size={14} />
-          </button>
+          <div>
+            <p className="text-xs uppercase tracking-wider text-white/40 mb-0.5">Account Status</p>
+            <p className="text-lg font-bold text-white">Verified Member</p>
+          </div>
         </div>
-
-        {sub && (
-          <div className="grid sm:grid-cols-3 gap-3 mt-6">
-            <Stat
-              icon={Database}
-              label="Datasize"
-              value={
-                sub.datasize_mb >= 1024
-                  ? `${(sub.datasize_mb / 1024).toFixed(0)} GB`
-                  : `${sub.datasize_mb} MB`
-              }
-            />
-            <Stat
-              icon={Layers}
-              label="Workspaces"
-              value={`${sub.workspaces + (sub.extra_workspaces || 0)}`}
-              hint={
-                sub.extra_workspaces ? `(+${sub.extra_workspaces} addon)` : null
-              }
-            />
-            <Stat
-              icon={Receipt}
-              label="Last payment"
-              value={`${sub.currency} ${Number(sub.amount).toFixed(2)}`}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Addon packets — only for paid plans */}
-      {sub && sub.plan_code !== "free" && (
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-2">
-            <ShoppingCart size={16} className="text-brand-500" />
-            <h2 className="font-bold">Add more workspaces</h2>
-          </div>
-          <p className="text-sm text-white/50 mb-5">
-            Each packet adds{" "}
-            <strong className="text-white">+10 workspaces</strong> to your
-            current plan for <strong className="text-white">₹500</strong>.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="inline-flex items-center bg-white/5 border border-white/10 rounded-xl">
-              <button
-                onClick={() => setPackets((p) => Math.max(1, p - 1))}
-                className="px-3 py-2 text-white/70 hover:text-white"
-              >
-                <Minus size={14} />
-              </button>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={packets}
-                onChange={(e) =>
-                  setPackets(
-                    Math.max(1, Math.min(100, Number(e.target.value) || 1)),
-                  )
-                }
-                className="w-14 text-center bg-transparent outline-none font-bold tabular-nums"
-              />
-              <button
-                onClick={() => setPackets((p) => Math.min(100, p + 1))}
-                className="px-3 py-2 text-white/70 hover:text-white"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-
-            <div className="text-sm text-white/60">
-              {packets} packet{packets > 1 ? "s" : ""} = +{packets * 10}{" "}
-              workspaces ·
-              <span className="text-white font-semibold">
-                {" "}
-                ₹{packets * 500}
-              </span>
-            </div>
-
-            <button
-              onClick={buyPackets}
-              disabled={busy}
-              className={`ml-auto py-2.5 px-5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-[0.98]
-                ${
-                  busy
-                    ? "bg-white/5 text-white/30 cursor-not-allowed border border-white/5"
-                    : "bg-brand-500 hover:bg-brand-400 text-black shadow-lg shadow-brand-500/20"
-                }`}
-            >
-              {busy ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Processing…
-                </>
-              ) : (
-                <>Buy now</>
-              )}
-            </button>
-            <DummyPaymentButton
-              kind="addon"
-              packets={packets}
-              className="ml-2"
-              onSuccess={async () => {
-                setOk(`[Test] Added ${packets * 10} workspaces.`);
-                await refresh();
-                await reload();
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {!sub && (
-        <div className="card p-6 text-center">
-          <p className="text-white/60 mb-4">
-            You don't have an active plan yet.
-          </p>
-          <button onClick={() => navigate("/pricing")} className="btn-primary">
-            Choose a plan <ArrowRight size={14} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

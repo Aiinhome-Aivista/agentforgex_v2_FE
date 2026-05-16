@@ -160,21 +160,6 @@ export default function SaveToWorkspaceButton({
               </button>
             </div>
 
-            {/* Quota strip */}
-            {quota && (
-              <div className="mb-4 rounded-md border border-white/10
-                              bg-white/[0.03] px-3 py-2 flex items-center
-                              justify-between text-[11px]">
-                <span className="text-white/50 uppercase font-bold tracking-widest">
-                  Plan: <span className="text-white/80">{quota.plan_code}</span>
-                </span>
-                <span className={`font-mono ${atCap ? 'text-red-400' : 'text-white/70'}`}>
-                  {quota.used} / {quota.allowed} used
-                  {quota.extra_workspaces ? ` (+${quota.extra_workspaces} addon)` : ''}
-                </span>
-              </div>
-            )}
-
             <label className="block text-[11px] uppercase font-bold tracking-widest
                               text-white/40 mb-1.5">
               Workspace name
@@ -197,14 +182,6 @@ export default function SaveToWorkspaceButton({
                 <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p>{err}</p>
-                  {atCap && (
-                    <button
-                      onClick={() => { setOpen(false); navigate('/account') }}
-                      className="mt-1 underline text-red-200 hover:text-white"
-                    >
-                      Manage plan / buy addon packet →
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -216,6 +193,7 @@ export default function SaveToWorkspaceButton({
                 <Check size={14} /> Saved.
               </div>
             )}
+
 
             <div className="mt-5 flex items-center justify-end gap-2">
               <button

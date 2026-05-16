@@ -7,7 +7,7 @@ import HistoryPage from './pages/HistoryPage'
 import LoginPage from './pages/LoginPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
-import PricingPage from './pages/PricingPage'
+
 import AccountPage from './pages/AccountPage'
 import SuggestionDetailsPage from './pages/SuggestionDetailsPage'
 import WorkspacesPage from './pages/WorkspacesPage'
@@ -49,7 +49,7 @@ export default function AppRoutes() {
       <Route element={<PrivateRoute />}>
         {/* Pricing is reachable both inside and outside the AppLayout —
             outside so newly-registered users without a plan see a clean page. */}
-        <Route path="/pricing" element={<PricingPage />} />
+
 
         <Route element={<Applayout />}>
           <Route path="/suggestion/:id" element={<SuggestionDetailsPage />} />

@@ -83,57 +83,7 @@ export default function WorkspacesPage() {
         </button>
       </div>
 
-      {/* Quota panel */}
-      {quota && (
-        <div className="card p-4 mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-widest font-black text-white/30">
-              Plan
-            </p>
-            <p className="text-sm font-bold text-white/90 mt-0.5 capitalize">
-              {quota.plan_code}
-              {!quota.subscription_active && (
-                <span
-                  className="ml-2 text-[10px] uppercase tracking-widest
-                                 text-white/30 font-bold"
-                >
-                  (no active subscription)
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-widest font-black text-white/30">
-              Used
-            </p>
-            <p
-              className={`text-2xl font-black tabular-nums mt-0.5
-                           ${atCap ? "text-red-400" : "text-white/90"}`}
-            >
-              {quota.used}
-              <span className="text-white/30 text-base">
-                {" "}
-                / {quota.allowed}
-              </span>
-            </p>
-            {quota.extra_workspaces > 0 && (
-              <p className="text-[10px] uppercase tracking-widest text-white/30 mt-0.5">
-                includes +{quota.extra_workspaces} addon
-              </p>
-            )}
-          </div>
-          {atCap && (
-            <button
-              onClick={() => navigate("/account")}
-              className="ml-4 inline-flex items-center gap-1 text-[11px]
-                         uppercase tracking-widest font-bold rounded-md
-                         bg-brand-500 hover:bg-brand-600 text-white px-3 py-2"
-            >
-              <Plus size={12} /> Add packet
-            </button>
-          )}
-        </div>
-      )}
+
 
       {error && (
         <div

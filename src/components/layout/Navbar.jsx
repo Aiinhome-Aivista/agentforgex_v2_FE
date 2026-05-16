@@ -46,22 +46,14 @@ export default function Navbar() {
             Welcome {user?.name}
           </h1>
 
-          {planLabel && (
-            <Link
-              to="/account"
-              title="Manage plan"
-              className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border flex items-center gap-1
-                bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/15 transition-colors">
-              <Sparkles size={10} /> {planLabel}
-            </Link>
-          )}
 
-          <Link
+
+          {/* <Link
             to="/account"
             title="Account"
             className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-lg transition-all">
             <UserCircle2 size={18} />
-          </Link>
+          </Link> */}
 
           <button
             onClick={handleLogout}

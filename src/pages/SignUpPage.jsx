@@ -43,8 +43,7 @@ export default function SignUpPage() {
     setToken(res.token)
     setStoredUser(res.data)
     login(res.data)
-    if (!res.data.plan) navigate('/pricing', { replace: true })
-    else navigate('/home', { replace: true })
+    navigate('/home', { replace: true })
   }
 
   // ── Step 1 → request OTP ──────────────────────────────────────────────────
@@ -172,7 +171,7 @@ export default function SignUpPage() {
                 Create your <span className="gradient-text">AgentForgeX</span> account
               </h2>
               <p className="text-white/40 text-sm">
-                Start with a 3-day free trial. No card needed.
+                Start by creating your first workspace.
               </p>
             </div>
 
