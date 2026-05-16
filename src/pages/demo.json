@@ -3,7 +3,7 @@
     "title": "Agentic AI KT Risk Moderator Agent – Technical Design",
     "version": "Draft V1.0",
     "date": "April 2026",
-    "organization": "PwC",
+    "organization": "Aiinhome",
     "document_type": "Technical Design Document",
     "pages": 34,
     "classification": "Draft",
@@ -14,7 +14,7 @@
     "subtitle": "Technical Design",
     "version": "Draft V1.0",
     "date": "April 2026",
-    "organization": "PwC"
+    "organization": "Aiinhome"
   },
   "table_of_contents": [
     {
@@ -415,7 +415,7 @@
               "name": "Report Generator Agent",
               "role": "Generate formatted Word document",
               "features": [
-                "PwC branding",
+                "Aiinhome branding",
                 "Heading hierarchy",
                 "Severity color coding",
                 "Table formatting"
@@ -753,7 +753,7 @@
           "alternating_rows": true,
           "severity_color_coding": true
         },
-        "branding": "PwC Standards",
+        "branding": "Aiinhome Standards",
         "generation_tool": "python-docx"
       }
     },

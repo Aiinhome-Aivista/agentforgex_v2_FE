@@ -162,7 +162,7 @@ function buildCover(data, titleArg) {
           children: [
             cp.date || "—",
             cp.version || "Draft V1.0",
-            cp.organization || "—",
+            "Aiinhome",
             "Confidential",
           ].map((v) =>
             new TableCell({

@@ -128,7 +128,7 @@ function addCoverSlide(pptx, data, titleArg) {
   const grid = [
     ["DATE",           cp.date || "—"],
     ["VERSION",        cp.version || "Draft V1.0"],
-    ["ORGANIZATION",   cp.organization || "—"],
+    ["ORGANIZATION",   "Aiinhome"],
     ["CLASSIFICATION", "Confidential"],
   ];
   const baseX = 0.4, baseY = 5.4, colW = 2.32, rowH = 0.95;
