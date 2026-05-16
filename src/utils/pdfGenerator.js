@@ -217,14 +217,35 @@ function drawTOC(d, data, sectionStartPages) {
   hLine(d, ML, y + 11, PW - MR, C.accent, 0.6);
   y += 22;
 
+  // 1. Agentic Process Workflow (Manual entry for the landscape workflow page)
+  const wfTitle = "Agentic Process Workflow";
+  rect(d, ML, y - 5, CW, 9, C.surface, 1);
+  setFont(d, "bold", 10);
+  ink(d, C.accent);
+  text(d, "01", ML + 3, y + 1);
+  setFont(d, "normal", 10);
+  ink(d, C.navy);
+  text(d, wfTitle, ML + 15, y + 1);
+  stroke(d, C.gray4);
+  d.setLineWidth(0.15);
+  d.setLineDashPattern([0.6, 1.2], 0);
+  const wfTitleW = d.getTextWidth(wfTitle);
+  d.line(ML + 17 + wfTitleW, y - 1, PW - MR - 12, y - 1);
+  d.setLineDashPattern([], 0);
+  setFont(d, "bold", 10);
+  ink(d, C.gray1);
+  text(d, "03", PW - MR - 2, y + 1, { align: "right" });
+  y += 9;
+
   const sections = data.sections || [];
   sections.forEach((sec, i) => {
     y = pageBreakIfNeeded(d, y, 11);
-    const num = String(sec.section_number || sec.section_no || (i + 1)).padStart(2, "0");
+    // Renumber to start from 02
+    const num = String(i + 2).padStart(2, "0");
     const title = sec.title || "Section";
     const page = sectionStartPages?.[i] ?? "";
 
-    if (i % 2 === 0) rect(d, ML, y - 5, CW, 9, C.surface, 1);
+    if ((i + 1) % 2 === 0) rect(d, ML, y - 5, CW, 9, C.surface, 1);
 
     setFont(d, "bold", 10);
     ink(d, C.accent);
@@ -944,7 +965,7 @@ function renderReportStructure(d, y, items) {
 /* ─── Section router ────────────────────────────────────────────────── */
 function drawSection(d, section, secIndex) {
   let y = startContentPage(d);
-  const number = section.section_number || section.section_no || (secIndex + 1);
+  const number = (secIndex + 2);
   y = sectionTitle(d, y, number, section.title);
 
   if (section.subsections) {

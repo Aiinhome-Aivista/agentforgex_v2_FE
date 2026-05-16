@@ -153,11 +153,14 @@ function addTOCSlide(pptx, data) {
   addHeader(slide, "TABLE OF CONTENTS");
   addTitle(slide, null, "Table of Contents");
 
-  // Derive from sections[] (not table_of_contents)
-  const items = (data.sections || []).map((s, i) => [
-    String(s.section_number || s.section_no || i + 1).padStart(2, "0"),
-    s.title || "",
-  ]);
+  // 1. Agentic Process Workflow (Manual first entry)
+  const items = [
+    ["01", "Agentic Process Workflow"],
+    ...(data.sections || []).map((s, i) => [
+      String(i + 2).padStart(2, "0"),
+      s.title || "",
+    ])
+  ];
 
   const rows = [
     [
@@ -483,7 +486,7 @@ function addArchitectureLayerSlides(pptx, num, layer) {
 // ─── Section dispatcher ──────────────────────────────────────────────────────
 
 function addSectionSlides(pptx, section, index) {
-  const num = String(section.section_number || section.section_no || index + 1).padStart(2, "0");
+  const num = String(index + 2).padStart(2, "0");
   const title = section.title || "Section";
 
   if (section.architecture_layers) {

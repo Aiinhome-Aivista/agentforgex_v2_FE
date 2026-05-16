@@ -185,11 +185,14 @@ function buildCover(data, titleArg) {
 // ─── TOC (derived from sections[], not from data.table_of_contents) ──────────
 
 function buildTOC(data) {
-  // Source of truth = sections[] so we never miss section 7 etc.
-  const items = (data.sections || []).map((s, i) => [
-    String(s.section_number || s.section_no || i + 1).padStart(2, "0"),
-    s.title || "",
-  ]);
+  // 1. Agentic Process Workflow (Manual first entry)
+  const items = [
+    ["01", "Agentic Process Workflow"],
+    ...(data.sections || []).map((s, i) => [
+      String(i + 2).padStart(2, "0"),
+      s.title || "",
+    ])
+  ];
 
   return [
     p([run("Table of Contents", { bold: true, color: HEX.ink, size: 36 })],
@@ -544,7 +547,7 @@ function renderSubsections(subsections) {
 }
 
 function renderSection(section, index) {
-  const num = String(section.section_number || section.section_no || index + 1).padStart(2, "0");
+  const num = String(index + 2).padStart(2, "0");
   const items = [
     p([run(num, { bold: true, color: HEX.brand, size: 48 }), run("  " + (section.title || ""), { bold: true, color: HEX.ink, size: 32 })],
       { spacing: { before: 0, after: 200 } }),
