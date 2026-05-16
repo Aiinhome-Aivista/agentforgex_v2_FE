@@ -1,224 +1,242 @@
-import React from 'react';
-import { Zap } from 'lucide-react';
+/**
+ * PdfTemplate.jsx
+ * 
+ * NOTE: This component is now a lightweight PREVIEW panel only.
+ * The actual PDF/DOCX/PPTX export is handled by the native generators in:
+ *   src/utils/pdfGenerator.js   (jsPDF native — no html2canvas)
+ *   src/utils/docxGenerator.js  (docx library — programmatic)
+ *   src/utils/pptxGenerator.js  (pptxgenjs — shapes/text only)
+ *
+ * This preview renders a condensed visual summary of the technical design
+ * without any dependency on html2canvas or PNG capture.
+ */
 
-// A4 sizing for our fixed-width print rendering
-const PAGE_WIDTH = 794;
-const PAGE_HEIGHT = 1122;
-const PAGE_PADDING = 60;
+import React, { useMemo } from "react";
+import { Zap, Shield, Cpu, Database, Workflow, CheckCircle2, TrendingUp } from "lucide-react";
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const SEVERITY_COLORS = {
+  critical: "bg-red-500/20 text-red-400 border-red-500/30",
+  high:     "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  medium:   "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  low:      "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+};
+
+const WORKFLOW_STAGES = [
+  { icon: "📥", label: "Input\nCollection",   color: "from-blue-500 to-blue-700" },
+  { icon: "⚙️", label: "Data\nProcessing",    color: "from-violet-500 to-violet-700" },
+  { icon: "🧠", label: "AI\nAnalysis",         color: "from-emerald-500 to-emerald-700" },
+  { icon: "🤝", label: "Multi-Agent\nCollab",  color: "from-pink-500 to-pink-700" },
+  { icon: "✅", label: "Validation",            color: "from-amber-500 to-amber-700" },
+  { icon: "📄", label: "Design\nGen",           color: "from-sky-500 to-sky-700" },
+  { icon: "🚀", label: "Final\nOutput",         color: "from-emerald-500 to-teal-700" },
+];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionCard({ icon: Icon, title, children }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={16} className="text-brand-500 shrink-0" />}
+        <h3 className="text-sm font-bold text-white/90 uppercase tracking-wider">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MetricBadge({ metric, target }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1">
+      <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-tight">
+        {metric}
+      </p>
+      <p className="text-base font-black text-brand-500 leading-none">{target}</p>
+    </div>
+  );
+}
+
+function AgentCard({ agent }) {
+  return (
+    <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-lg p-3">
+      <div className="w-7 h-7 rounded-md bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
+        <span className="text-xs font-black text-brand-500">{agent.agent_id}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-white/90 truncate">{agent.name}</p>
+        <p className="text-[10px] text-brand-500 truncate">{agent.role}</p>
+        {agent.reasoning_framework && (
+          <span className="inline-block mt-1 px-1.5 py-0.5 bg-white/10 rounded text-[8px] font-bold text-white/40 uppercase tracking-wider">
+            {agent.reasoning_framework}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Workflow visual ──────────────────────────────────────────────────────────
+
+function WorkflowDiagram() {
+  return (
+    <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-none">
+      {WORKFLOW_STAGES.map((stage, i) => (
+        <React.Fragment key={i}>
+          <div className="flex flex-col items-center shrink-0 w-16">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stage.color} flex items-center justify-center shadow-lg mb-1.5`}>
+              <span className="text-lg">{stage.icon}</span>
+            </div>
+            <span className="text-[8px] font-bold text-white/60 text-center leading-tight whitespace-pre-wrap">
+              {stage.label}
+            </span>
+          </div>
+          {i < WORKFLOW_STAGES.length - 1 && (
+            <div className="w-6 shrink-0 flex items-center justify-center -mt-4">
+              <svg viewBox="0 0 24 8" className="w-full" fill="none">
+                <path d="M0 4 H20 M16 1 L20 4 L16 7" stroke="rgba(16,185,129,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PdfTemplate({ data, suggestionTitle }) {
   if (!data) return null;
 
-  const docMeta = data.cover_page || data.document || data.document_metadata;
-  const { sections } = data;
-  const tocItems = data.table_of_contents || sections;
+  const docMeta  = data.cover_page || data.document_metadata || {};
+  const sections = data.sections || [];
 
-  const renderGenericData = (content, level = 0) => {
-    if (content === null || content === undefined) return null;
-    
-    if (typeof content === 'string' || typeof content === 'number' || typeof content === 'boolean') {
-      return <span style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>{String(content)}</span>;
-    }
+  // Extract key data slices
+  const agents = useMemo(() => {
+    const layer3 = sections
+      .find(s => s.architecture_layers)
+      ?.architecture_layers?.find(l => l.agents);
+    return layer3?.agents || [];
+  }, [sections]);
 
-    if (Array.isArray(content)) {
-      if (content.length === 0) return null;
-      if (typeof content[0] === 'string' || typeof content[0] === 'number') {
-        return (
-          <span style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
-            {content.join(', ')}
-          </span>
-        );
-      }
-      
-      // Array of objects
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8, marginBottom: 12 }}>
-          {content.map((item, i) => (
-            <div key={i} style={{ paddingBottom: 16, borderBottom: i < content.length - 1 ? "1px dashed #e5e7eb" : "none" }}>
-              {renderGenericData(item, level + 1)}
-            </div>
-          ))}
-        </div>
-      );
-    }
+  const metrics = useMemo(() =>
+    sections.find(s => s.metrics)?.metrics || [],
+  [sections]);
 
-    if (typeof content === 'object') {
-      const keys = Object.keys(content).filter(k => !['id', 'layer_id', 'agent_id', 'section_number', 'section_no'].includes(k));
-      if (keys.length === 0) return null;
-      
-      const titleKey = keys.find(k => ['title', 'name', 'component_name', 'tool_name', 'type', 'rail_type', 'store_type', 'memory_type', 'workflow_name'].includes(k));
-      const titleValue = titleKey ? content[titleKey] : null;
-      
-      const renderKeys = keys.filter(k => k !== titleKey);
+  const guardrails = useMemo(() =>
+    sections.find(s => s.guardrails)?.guardrails || [],
+  [sections]);
 
-      return (
-        <div style={{ marginBottom: level === 0 ? 0 : 8 }}>
-          {titleValue && (
-            <h4 style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 12, marginTop: 0, paddingBottom: 8, borderBottom: "1px solid #e5e7eb" }}>
-              {titleValue}
-            </h4>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {renderKeys.map(k => {
-              const val = content[k];
-              if (val === null || val === undefined || val === '') return null;
-              
-              const isSimple = typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean';
-              const isStringArray = Array.isArray(val) && (val.length === 0 || typeof val[0] === 'string' || typeof val[0] === 'number');
-              
-              return (
-                <div key={k} style={{ display: isSimple ? 'flex' : 'block', gap: 16, alignItems: 'baseline' }}>
-                  <strong style={{ 
-                    fontSize: 12, 
-                    color: "#374151", 
-                    textTransform: "uppercase", 
-                    letterSpacing: "0.05em", 
-                    minWidth: isSimple ? 160 : 'auto', 
-                    marginBottom: (isSimple || isStringArray) ? 0 : 8, 
-                    display: isSimple ? 'inline-block' : 'block' 
-                  }}>
-                    {k.replace(/_/g, ' ')}
-                  </strong>
-                  <div style={{ flex: 1 }}>
-                    {renderGenericData(val, level + 1)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-    
-    return null;
-  };
+  const stack = useMemo(() =>
+    sections.find(s => s.stack)?.stack || {},
+  [sections]);
 
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: "#111", width: PAGE_WIDTH, margin: "0 auto", background: "#fff", textAlign: "left" }}>
-      
-      {/* ════════════ COVER PAGE ════════════ */}
-      <div 
-        className="pdf-atomic pdf-print-page-break" 
-        style={{ 
-          width: PAGE_WIDTH, 
-          height: PAGE_HEIGHT, 
-          background: "linear-gradient(135deg, #011614 0%, #04362d 100%)", 
-          color: "#fff", 
-          position: "relative",
-          padding: PAGE_PADDING,
-          boxSizing: "border-box",
-          overflow: "hidden"
-        }}
-      >
-        {/* Decorative elements */}
-        <div style={{ position: "absolute", top: "-10%", right: "-10%", width: 600, height: 600, background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)", borderRadius: "50%" }}></div>
-        <div style={{ position: "absolute", bottom: "-20%", left: "-10%", width: 800, height: 800, background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", borderRadius: "50%" }}></div>
+    <div className="space-y-4 p-4 text-left">
 
-        {/* Top bar */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, background: "#10b981", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Zap size={16} color="#000" fill="#000" />
-            </div>
-            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>AgentForgeX</span>
+      {/* ── Cover info ── */}
+      <div className="bg-gradient-to-br from-brand-500/20 to-brand-500/5 border border-brand-500/30 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
+            <Zap size={14} className="text-black fill-black" />
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981", letterSpacing: "0.2em", border: "1px solid rgba(16,185,129,0.3)", padding: "4px 12px", borderRadius: 20 }}>CONFIDENTIAL</span>
+          <span className="text-xs font-black text-brand-500 uppercase tracking-widest">AgentForgeX</span>
+          <span className="ml-auto px-2 py-0.5 border border-brand-500/30 rounded-full text-[8px] font-bold text-brand-500 uppercase tracking-widest">
+            Confidential
+          </span>
         </div>
-
-        {/* Center content */}
-        <div style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", width: "calc(100% - 120px)", zIndex: 10 }}>
-          <p style={{ color: "#10b981", fontWeight: 800, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 20 }}>
-            {docMeta?.document_type || "Technical Design"}
-          </p>
-          <h1 style={{ fontSize: 46, fontWeight: 900, color: "#fff", lineHeight: 1.2, marginBottom: 24, textWrap: "balance" }}>
-            {suggestionTitle || docMeta?.title}
-          </h1>
-          {docMeta?.subtitle && (
-            <p style={{ fontSize: 20, fontWeight: 500, color: "#d1d5db", marginTop: 16 }}>
-              {docMeta.subtitle}
-            </p>
-          )}
-        </div>
-
-        {/* Bottom bar */}
-        <div style={{ position: "absolute", bottom: PAGE_PADDING, width: `calc(100% - ${PAGE_PADDING * 2}px)`, display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 24, zIndex: 10 }}>
-          <div style={{ display: "flex", gap: 48, fontSize: 12, color: "#9ca3af" }}>
-            <span><strong style={{ color: "#fff", display: "block", marginBottom: 4, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.1em" }}>Date</strong> {docMeta?.date}</span>
-            <span><strong style={{ color: "#fff", display: "block", marginBottom: 4, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.1em" }}>Version</strong> {docMeta?.version}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ════════════ TABLE OF CONTENTS ════════════ */}
-      <div 
-        className="pdf-atomic pdf-print-page-break" 
-        style={{ 
-          width: PAGE_WIDTH, 
-          height: PAGE_HEIGHT, 
-          background: "#fff", 
-          padding: PAGE_PADDING,
-          boxSizing: "border-box"
-        }}
-      >
-        <div style={{ marginBottom: 48, display: "flex", alignItems: "center", gap: 8 }}>
-           <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-             <Zap size={10} color="#000" fill="#000" />
-           </div>
-           <span style={{ fontSize: 13, fontWeight: 800, color: "#6b7280", letterSpacing: "-0.01em" }}>AgentForgeX</span>
-        </div>
-        
-        <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111", marginBottom: 40, paddingBottom: 16 }}>
-          Table of Contents
+        <p className="text-[9px] font-bold text-brand-500/70 uppercase tracking-widest mb-1.5">
+          {docMeta.document_type || "Technical Design Document"}
+        </p>
+        <h2 className="text-lg font-black text-white leading-tight mb-2">
+          {suggestionTitle || docMeta.title}
         </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: "85%" }}>
-          {tocItems?.map((sec, idx) => (
-            <div key={idx} style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981", minWidth: 24 }}>{String(sec.section_no || sec.section_number).padStart(2, '0')}</span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>{sec.title}</span>
-              <span style={{ borderBottom: "2px dotted #e5e7eb", flexGrow: 1, margin: "0 8px", position: "relative", top: -4 }}></span>
-              {sec.page && <span style={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>{sec.page}</span>}
-            </div>
+        {docMeta.subtitle && (
+          <p className="text-xs text-white/50">{docMeta.subtitle}</p>
+        )}
+        <div className="flex gap-4 mt-3 pt-3 border-t border-white/10">
+          {[["Date", docMeta.date], ["Version", docMeta.version], ["Org", docMeta.organization]].map(([l, v]) => (
+            v && (
+              <div key={l}>
+                <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">{l}</p>
+                <p className="text-xs font-bold text-white/80">{v}</p>
+              </div>
+            )
           ))}
         </div>
       </div>
 
-      {/* ════════════ CONTENT SECTIONS ════════════ */}
-      <div style={{ background: "#fff", padding: PAGE_PADDING, boxSizing: "border-box", width: PAGE_WIDTH }}>
-        {sections?.map((section, idx) => {
-          // Extract section content, removing standard keys
-          const sectionContentKeys = Object.keys(section).filter(k => !['section_no', 'section_number', 'title'].includes(k));
-          
-          return (
-            <div key={idx} className="pdf-atomic pdf-print-page-break" style={{ marginBottom: 64, paddingBottom: 32, borderBottom: idx !== sections.length - 1 ? "1px solid #f3f4f6" : "none" }}>
-              
-              {/* Header branding on content pages */}
-              <div style={{ marginBottom: 40, display: "flex", alignItems: "center", gap: 12 }}>
-                 <div style={{ width: 16, height: 16, background: "#10b981", borderRadius: 4 }}></div>
-                 <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.1em" }}>Technical Design Document</span>
-              </div>
+      {/* ── Agentic Workflow ── */}
+      <SectionCard icon={Workflow} title="Agentic Process Workflow">
+        <WorkflowDiagram />
+        <p className="text-[9px] text-white/30 text-center">
+          Operating Model: Hierarchical Orchestrator  •  Plan-and-Execute + ReAct
+        </p>
+      </SectionCard>
 
-              {/* Section Title */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 32 }}>
-                <span style={{ fontSize: 36, fontWeight: 300, color: "#10b981", lineHeight: 1 }}>{String(section.section_no || section.section_number).padStart(2, '0')}</span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111", lineHeight: 1.3, marginTop: 4 }}>{section.title}</h2>
-              </div>
+      {/* ── Agents ── */}
+      {agents.length > 0 && (
+        <SectionCard icon={Cpu} title={`AI Agents (${agents.length})`}>
+          <div className="grid grid-cols-1 gap-2">
+            {agents.map((a) => <AgentCard key={a.agent_id} agent={a} />)}
+          </div>
+        </SectionCard>
+      )}
 
-              {/* Generic Content Renderer */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                {sectionContentKeys.map(key => (
-                  <div key={key}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, color: "#111", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "2px solid #f3f4f6", paddingBottom: 8 }}>
-                      {key.replace(/_/g, ' ')}
-                    </h3>
-                    {renderGenericData(section[key], 0)}
-                  </div>
-                ))}
-              </div>
+      {/* ── Metrics ── */}
+      {metrics.length > 0 && (
+        <SectionCard icon={TrendingUp} title="Success Metrics">
+          <div className="grid grid-cols-2 gap-2">
+            {metrics.map((m, i) => <MetricBadge key={i} metric={m.metric} target={m.target} />)}
+          </div>
+        </SectionCard>
+      )}
 
-            </div>
-          );
-        })}
+      {/* ── Guardrails ── */}
+      {guardrails.length > 0 && (
+        <SectionCard icon={Shield} title="Guardrails">
+          <div className="space-y-2">
+            {guardrails.map((r, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <CheckCircle2 size={12} className="text-brand-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[10px] font-bold text-white/80">{r.rail_type}</span>
+                  {r.functions?.[0] && (
+                    <p className="text-[9px] text-white/40 mt-0.5 truncate">{r.functions[0]}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Tech Stack ── */}
+      {Object.keys(stack).length > 0 && (
+        <SectionCard icon={Database} title="Tech Stack">
+          <div className="space-y-1.5">
+            {Object.entries(stack).slice(0, 8).map(([k, v]) => (
+              <div key={k} className="flex items-baseline gap-2">
+                <span className="text-[8px] font-bold text-white/30 uppercase tracking-wider shrink-0 w-24 truncate">
+                  {k.replace(/_/g, " ")}
+                </span>
+                <span className="text-[9px] text-white/60 truncate">
+                  {Array.isArray(v) ? v.slice(0, 3).join("  •  ") : String(v)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── Export note ── */}
+      <div className="bg-white/3 border border-white/5 rounded-xl p-3 text-center">
+        <p className="text-[9px] text-white/20 uppercase tracking-widest">
+          Exported via AgentForgeX native generators · PDF / DOCX / PPTX
+        </p>
       </div>
+
     </div>
   );
 }
