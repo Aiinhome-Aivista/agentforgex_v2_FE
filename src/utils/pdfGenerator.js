@@ -97,7 +97,9 @@ function drawPageHeader(d) {
 }
 function pageBreakIfNeeded(d, y, needed) {
   if (y + needed > PH - MBot) {
-    d.addPage();
+    // CRITICAL: always pass explicit orientation so we don't inherit landscape
+    // from the workflow page that lives earlier in the document.
+    d.addPage("a4", "portrait");
     drawPageBg(d);
     drawPageHeader(d);
     return MTop;
@@ -258,6 +260,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   d.rect(0, 0, lpw, lph, "F");
   rect(d, 0, 0, 1.2, lph, C.accent);
 
+  // Page header
   setFont(d, "bold", 8);
   ink(d, C.gray2);
   text(d, "AgentForgeX", lpw - 18, 11, { align: "right" });
@@ -266,6 +269,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   text(d, "Technical Design  ·  Agentic Process Workflow", lpw - 18, 14.5, { align: "right" });
   hLine(d, 18, 17, lpw - 18, C.border, 0.2);
 
+  // Section heading
   setFont(d, "bold", 18);
   ink(d, C.navy);
   text(d, "Agentic Process Workflow", 18, 28);
@@ -282,66 +286,147 @@ function drawSwimlaneWorkflowPage(d, flowData) {
     return;
   }
 
-  // workflowRenderer returns positions in mm
+  // Diagram area (in physical mm)
+  const usableW = lpw - 36;
+  const usableH = lph - 60;       // 45mm header + 15mm footer
+  const startY  = 43;
+
+  // ── Sizing strategy ─────────────────────────────────────────────────
+  // Pick dimensions in mm so the diagram fits the page natively, without
+  // a global scale that would shrink lane labels to illegibility.
+  // - Lane labels stay at a fixed readable width
+  // - Node columns shrink to fit horizontally
+  // - If they still overflow, an X-ONLY scale is applied to the content
+  //   area; vertical dims and label width stay intact.
+  const laneLabelW = 38;
+  const colGap     = 8;
+  let   nodeH      = 16;
+  let   laneHeight = 30;
+
+  // Count distinct columns
+  const usedColsSet = new Set();
+  (flowData.lanes || []).forEach(l =>
+    (l.nodes || []).forEach(n => usedColsSet.add(n.column ?? 1)));
+  const nCols = Math.max(1, usedColsSet.size);
+
+  // Available width for the column content area (after lane label cell)
+  const contentBudget = usableW - laneLabelW;
+
+  // Iteratively find the largest nodeW that fits. Allow colGap to shrink
+  // from 8mm → 3mm before further reducing nodeW. This keeps boxes as
+  // wide as possible (more room for labels) before falling back to X-scale.
+  let effectiveColGap = colGap;
+  let nodeW = Math.floor((contentBudget - (nCols - 1) * effectiveColGap) / nCols);
+  while (nodeW < 26 && effectiveColGap > 3) {
+    effectiveColGap -= 1;
+    nodeW = Math.floor((contentBudget - (nCols - 1) * effectiveColGap) / nCols);
+  }
+  nodeW = Math.min(70, nodeW);
+  // Soft floor at 16mm; if math demands less, X-scale will compensate.
+  if (nodeW < 16) nodeW = 16;
+
+  // Narrow boxes need MORE vertical room (labels wrap to more lines).
+  // Increase node height up to 20mm when boxes are narrow.
+  if (nodeW < 26) {
+    nodeH = Math.min(22, Math.round(16 + (26 - nodeW) * 0.3));
+  }
+
+  // Vertically tight → shrink lane height
+  const totalLanesH = (flowData.lanes || []).length * laneHeight;
+  if (totalLanesH > usableH) {
+    laneHeight = Math.max(14, Math.floor(usableH / (flowData.lanes || []).length));
+    nodeH = Math.min(nodeH, laneHeight - 4);
+  }
+
   const layout = layoutWorkflow(flowData, {
-    nodeW: 42, nodeH: 16, colGap: 10, laneHeight: 28, laneLabelWidth: 32, padding: 0, titleHeight: 0,
+    nodeW, nodeH,
+    colGap: effectiveColGap,
+    laneHeight,
+    laneLabelWidth: laneLabelW,
+    padding: 0,
+    titleHeight: 0,
   });
 
-  const usableW = lpw - 36;
-  const usableH = lph - 63;
-  const startY  = 45;
+  // Final overflow check: if layout is still wider than the page,
+  // apply X-ONLY scale to content. Y stays native.
+  const scaleX = layout.width > usableW
+    ? usableW / layout.width
+    : 1;
+  const renderedW = layout.width * scaleX;
+  const renderedH = layout.height;
 
-  const scaleW = usableW / layout.width;
-  const scaleH = usableH / layout.height;
-  const scale  = Math.min(scaleW, scaleH, 1);
-
-  const renderedW = layout.width * scale;
-  const renderedH = layout.height * scale;
   const ox = 18 + Math.max(0, (usableW - renderedW) / 2);
-  const oy = startY + Math.max(0, (usableH - renderedH) / 2);
+  const oy = startY;
 
-  const laneLabelW = 32 * scale;
+  // Helpers for converting layout-mm to physical-mm. X is scaled (so the
+  // diagram fits horizontally); Y is preserved (lane heights stay native).
+  const X = (lx) => ox + lx * scaleX;
+  const Y = (ly) => oy + ly;
+  const W = (lw) => lw * scaleX;
+  const H = (lh) => lh;
 
-  // Lane backgrounds + labels
+  // Lane backgrounds + label cells
   layout.lanes.forEach((lane, i) => {
-    const ly = oy + lane.top * scale;
-    const lh = lane.height * scale;
+    const ly = Y(lane.top);
+    const lh = H(lane.height);
 
+    // Lane row background — soft tint matching the lane accent so each lane
+    // reads as a distinct horizontal band, the way the UI shows them.
     rect(d, ox + laneLabelW, ly, renderedW - laneLabelW, lh,
-         i % 2 === 0 ? C.surface : C.bg, 0);
+         hexToRgb(lane.tint), 0);
+
+    // Lane label cell — same tint, with a stronger left accent stripe
     rect(d, ox, ly, laneLabelW, lh, hexToRgb(lane.tint), 0);
     strokeRect(d, ox, ly, laneLabelW, lh, C.border, 0.2, 0);
-    rect(d, ox, ly, Math.max(1, 1.5 * scale), lh, hexToRgb(lane.accent), 0);
+    rect(d, ox, ly, 2, lh, hexToRgb(lane.accent), 0);
 
-    const labelFont = Math.max(6.5, 8 * Math.sqrt(scale));
+    // Inner white "chip" so the label sits in a card on the tinted lane
+    const chipPad = 2;
+    const chipX = ox + chipPad + 2;
+    const chipY = ly + chipPad;
+    const chipW = laneLabelW - chipPad * 2 - 2;
+    const chipH = lh - chipPad * 2;
+    rect(d, chipX, chipY, chipW, chipH, [255, 255, 255], 1);
+    strokeRect(d, chipX, chipY, chipW, chipH, hexToRgb(lane.accent), 0.2, 1);
+
+    // Label text — bold, in the lane accent color
+    const labelFont = 9;
     setFont(d, "bold", labelFont);
-    ink(d, hexToRgb(lane.text));
-    const labelLines = (lane.label || "").split("\n").flatMap(l => d.splitTextToSize(l, laneLabelW - 4));
-    const lineH = labelFont * 0.42;
+    ink(d, hexToRgb(lane.accent));
+    const labelLines = (lane.label || "")
+      .split("\n")
+      .flatMap(l => d.splitTextToSize(l, chipW - 3));
+    const lineH = labelFont * 0.45;
     const totalH = labelLines.length * lineH;
     labelLines.forEach((ln, li) => {
-      text(d, ln, ox + 3, ly + lh / 2 - totalH / 2 + lineH * 0.7 + li * lineH);
+      text(d, ln, chipX + chipW / 2,
+           chipY + chipH / 2 - totalH / 2 + lineH * 0.85 + li * lineH,
+           { align: "center" });
     });
 
-    stroke(d, C.border);
-    d.setLineWidth(0.2);
-    d.setLineDashPattern([0.8, 1.6], 0);
-    d.line(ox, ly + lh, ox + renderedW, ly + lh);
-    d.setLineDashPattern([], 0);
+    // Dashed bottom separator between lanes
+    if (i < layout.lanes.length - 1) {
+      stroke(d, C.border);
+      d.setLineWidth(0.2);
+      d.setLineDashPattern([0.8, 1.6], 0);
+      d.line(ox, ly + lh, ox + renderedW, ly + lh);
+      d.setLineDashPattern([], 0);
+    }
   });
 
-  // Edges (under nodes)
+  // Edges (drawn under nodes)
   layout.edges.forEach(e => {
-    const fx = ox + e.fromX * scale;
-    const fy = oy + e.fromY * scale;
-    const tx = ox + e.toX   * scale;
-    const ty = oy + e.toY   * scale;
+    const fx = X(e.fromX);
+    const fy = Y(e.fromY);
+    const tx = X(e.toX);
+    const ty = Y(e.toY);
 
     stroke(d, C.gray2);
     d.setLineWidth(0.4);
-    const head = 1.6;
+    const head = 1.8;
 
     if (Math.abs(fy - ty) < 0.5) {
+      // Horizontal
       const dir = tx >= fx ? 1 : -1;
       d.line(fx, fy, tx - dir * head, ty);
       fill(d, C.gray2);
@@ -349,6 +434,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
                  tx - dir * head, ty - head * 0.6,
                  tx - dir * head, ty + head * 0.6, "F");
     } else if (Math.abs(fx - tx) < 0.5) {
+      // Vertical
       const dir = ty >= fy ? 1 : -1;
       d.line(fx, fy, tx, ty - dir * head);
       fill(d, C.gray2);
@@ -356,6 +442,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
                  tx - head * 0.6, ty - dir * head,
                  tx + head * 0.6, ty - dir * head, "F");
     } else {
+      // L-shape via midX
       const midX = (fx + tx) / 2;
       d.line(fx, fy, midX, fy);
       d.line(midX, fy, midX, ty);
@@ -368,48 +455,91 @@ function drawSwimlaneWorkflowPage(d, flowData) {
     }
   });
 
-  // Nodes
+  // ── Node visual override to match UI ────────────────────────────────
+  // The UI shows:
+  //   • start/end  → green pill (light green body, darker green text)
+  //   • decision   → soft-blue diamond (light blue body, darker blue text)
+  //   • process    → SOFT PINK card with a deeper-red LEFT STRIPE, dark text
+  // The workflowRenderer assigns per-lane-colored strokes, but the UI uses a
+  // single rose-pink palette for ALL process nodes (lane identity is shown
+  // via the lane row background, not the node). We override here.
+  const PROCESS_FILL   = "#FEF2F2"; // rose-50
+  const PROCESS_STRIPE = "#EF4444"; // red-500
+  const PROCESS_STROKE = "#FCA5A5"; // red-300
+  const PROCESS_TEXT   = "#1F2937"; // gray-800
+  const START_FILL     = "#D1FAE5";
+  const START_STROKE   = "#6EE7B7";
+  const START_TEXT     = "#047857";
+  const DECISION_FILL   = "#E0E7FF";
+  const DECISION_STROKE = "#A5B4FC";
+  const DECISION_TEXT   = "#3730A3";
+
+  // Nodes (on top of edges)
   layout.nodes.forEach(n => {
-    const nx = ox + n.x * scale;
-    const ny = oy + n.y * scale;
-    const nw = n.w * scale;
-    const nh = n.h * scale;
-    const stripeW = Math.max(0.6, 1.5 * scale);
-    const fontPt = Math.max(5, Math.min(8, 0.42 * nh));
+    const nx = X(n.x);
+    const ny = Y(n.y);
+    const nw = W(n.w);
+    const nh = H(n.h);
+    const stripeW = Math.max(0.8, 1.8);
+    const fontPt = Math.max(5.5, Math.min(8, 0.42 * nh));
 
     if (n.type === "decision") {
       const cx = nx + nw / 2, cy = ny + nh / 2;
       const dx = nw / 2, dy = nh / 2;
-      fill(d, hexToRgb(n.fill));
-      stroke(d, hexToRgb(n.stroke));
+      fill(d, hexToRgb(DECISION_FILL));
+      stroke(d, hexToRgb(DECISION_STROKE));
       d.setLineWidth(0.4);
       d.lines([[dx, -dy], [dx, dy], [-dx, dy], [-dx, -dy]], cx - dx, cy, [1, 1], "FD", true);
 
       setFont(d, "bold", Math.max(5, fontPt - 1));
-      ink(d, hexToRgb(n.text));
-      const lines = d.splitTextToSize(n.label, nw - 3);
+      ink(d, hexToRgb(DECISION_TEXT));
+      const lines = d.splitTextToSize(n.label, nw - 6);
       const lineH = fontPt * 0.42;
       lines.slice(0, 2).forEach((ln, li) => {
-        text(d, ln, cx, cy - (lines.length - 1) * lineH / 2 + (li + 0.5) * lineH, { align: "center" });
+        text(d, ln, cx,
+             cy - (lines.length - 1) * lineH / 2 + (li + 0.4) * lineH,
+             { align: "center" });
       });
     } else {
       const isStartEnd = n.type === "start" || n.type === "end";
-      const radius = isStartEnd ? nh / 2 : 1.5;
-      fill(d, hexToRgb(n.fill));
+      const bodyFill   = isStartEnd ? hexToRgb(START_FILL)   : hexToRgb(PROCESS_FILL);
+      const bodyStroke = isStartEnd ? hexToRgb(START_STROKE) : hexToRgb(PROCESS_STROKE);
+      const bodyText   = isStartEnd ? hexToRgb(START_TEXT)   : hexToRgb(PROCESS_TEXT);
+      const radius     = isStartEnd ? nh / 2 : 1.8;
+
+      fill(d, bodyFill);
       d.roundedRect(nx, ny, nw, nh, radius, radius, "F");
-      strokeRect(d, nx, ny, nw, nh, hexToRgb(n.stroke), 0.35, radius);
-      rect(d, nx, ny, stripeW, nh, hexToRgb(n.accent), 0);
+      strokeRect(d, nx, ny, nw, nh, bodyStroke, 0.35, radius);
+
+      // Left stripe only for process nodes (start/end is a pill, no stripe)
+      if (!isStartEnd) {
+        rect(d, nx, ny, stripeW, nh, hexToRgb(PROCESS_STRIPE), 0);
+      }
 
       setFont(d, "bold", fontPt);
-      ink(d, hexToRgb(n.text));
-      const innerPad = stripeW + 1.5;
-      const lines = d.splitTextToSize(n.label, nw - innerPad * 2);
-      const lineH = fontPt * 0.42;
-      const shown = lines.slice(0, 3);
+      ink(d, bodyText);
+      const innerPad = (isStartEnd ? 2 : stripeW + 1.5);
+      const wrapWidth = nw - innerPad - 2;
+      let lines = d.splitTextToSize(n.label, wrapWidth);
+      // If too many lines, try a smaller font once
+      let effectiveFont = fontPt;
+      const maxLinesInBox = Math.max(2, Math.floor((nh - 2) / (fontPt * 0.42)));
+      if (lines.length > maxLinesInBox && fontPt > 5.5) {
+        effectiveFont = Math.max(5.5, fontPt - 1);
+        setFont(d, "bold", effectiveFont);
+        lines = d.splitTextToSize(n.label, wrapWidth);
+      }
+      const lineH = effectiveFont * 0.42;
+      const cap = Math.max(2, Math.floor((nh - 1.5) / lineH));
+      const shown = lines.slice(0, cap);
       const totalH = shown.length * lineH;
+      const textCenterX = isStartEnd
+        ? nx + nw / 2
+        : nx + stripeW + (nw - stripeW) / 2;
       shown.forEach((ln, li) => {
-        text(d, ln, nx + nw / 2 + stripeW / 2,
-             ny + nh / 2 - totalH / 2 + (li + 0.6) * lineH, { align: "center" });
+        text(d, ln, textCenterX,
+             ny + nh / 2 - totalH / 2 + (li + 0.7) * lineH,
+             { align: "center" });
       });
     }
   });
@@ -878,32 +1008,38 @@ export async function generatePDF(data, title = "Technical_Design", flowData = n
   const d = new jsPDF({ unit: "mm", format: "a4", compress: true });
   const customFooterPages = new Set();
 
-  // 1. Cover
+  // 1. Cover (portrait — page 1)
   drawCover(d, data, title);
   customFooterPages.add(1);
 
-  // 2. Reserve TOC page
-  d.addPage();
+  // 2. Reserve TOC page (portrait — page 2). We'll backfill it after we know
+  //    the section start pages.
+  d.addPage("a4", "portrait");
   drawPageBg(d);
   drawPageHeader(d);
 
-  // 3. Swimlane workflow (landscape)
+  // 3. Swimlane workflow (landscape — page 3). Lives in its own dedicated
+  //    landscape page. drawSwimlaneWorkflowPage adds the landscape page itself.
   drawSwimlaneWorkflowPage(d, flowData);
   customFooterPages.add(3);
 
-  // 4..N. Sections
+  // 4..N. Section pages (portrait). Each section starts on a fresh portrait
+  //    page. CRITICAL: pass orientation explicitly — without it, jsPDF
+  //    inherits the previous page's orientation (landscape), which is the
+  //    root cause of "everything after the workflow is sideways".
   const sectionStartPages = [];
   (data.sections || []).forEach((section, i) => {
-    d.addPage();
+    d.addPage("a4", "portrait");
     sectionStartPages.push(d.getNumberOfPages());
     drawSection(d, section, i);
   });
 
-  // Now render TOC on the reserved page 2
+  // Backfill the TOC on the reserved page 2 (still portrait — set above)
   d.setPage(2);
   drawTOC(d, data, sectionStartPages);
 
-  // Footers everywhere except cover & workflow
+  // Footers everywhere except the cover (its own footer) and the landscape
+  // workflow page (its own landscape-aware footer).
   drawFooters(d, { skipPages: customFooterPages });
 
   const safe = String(title).replace(/[^\w\d]+/g, "_").slice(0, 80);
