@@ -13,18 +13,18 @@ import {
 
 // ─── Colour helpers (OOXML hex) ───────────────────────────────────────────────
 const HEX = {
-  bg:       "08080C",
-  surface:  "0E1422",
+  bg:       "FFFFFF",
+  surface:  "F8FAFC",
   accent:   "10B981",
-  accentDk: "065F46",
-  white:    "FFFFFF",
-  gray1:    "DCE1EB",
-  gray2:    "A0AABB",
-  gray3:    "505A6C",
-  border:   "1E2840",
-  red:      "EF4444",
-  amber:    "F59E0B",
-  blue:     "3B82F6",
+  accentDk: "059669",
+  heading:  "0F172A",
+  gray1:    "334155",
+  gray2:    "64748B",
+  gray3:    "94A3B8",
+  border:   "E2E8F0",
+  red:      "DC2626",
+  amber:    "D97706",
+  blue:     "2563EB",
 };
 
 // ─── Paragraph factory ────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ function headerCell(text) {
 function dataCell(text, shade = false) {
   return new TableCell({
     children: [new Paragraph({ children: [new TextRun({ text: String(text ?? ""), color: HEX.gray1, size: 18 })] })],
-    shading: shade ? { type: ShadingType.SOLID, color: "0F1828" } : undefined,
+    shading: shade ? { type: ShadingType.SOLID, color: "F1F5F9" } : undefined,
     borders: sharedBorders(),
     margins: { top: 60, bottom: 60, left: 120, right: 120 },
   });
@@ -177,7 +177,7 @@ function coverSection(data, title) {
   const cp = data.cover_page || data.document_metadata || {};
   return [
     new Paragraph({
-      children: [new TextRun({ text: "⚡ AgentForgeX", bold: true, color: HEX.accent, size: 32 })],
+      children: [new TextRun({ text: "AgentForgeX", bold: true, color: HEX.accent, size: 32 })],
       alignment: AlignmentType.LEFT,
       spacing: { before: 0, after: 240 },
     }),
@@ -186,7 +186,7 @@ function coverSection(data, title) {
       spacing: { before: 480, after: 120 },
     }),
     new Paragraph({
-      children: [new TextRun({ text: title || cp.title || "Agentic AI Technical Design", bold: true, color: HEX.white, size: 52 })],
+      children: [new TextRun({ text: title || cp.title || "Agentic AI Technical Design", bold: true, color: HEX.heading, size: 52 })],
       spacing: { before: 80, after: 160 },
     }),
     cp.subtitle ? new Paragraph({
@@ -480,7 +480,7 @@ export async function generateDOCX(data, title = "Technical_Design") {
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: "⚡ AgentForgeX  |  Confidential", color: HEX.gray3, size: 16 }),
+                new TextRun({ text: "AgentForgeX  |  Confidential", color: HEX.gray3, size: 16 }),
               ],
               alignment: AlignmentType.CENTER,
             }),

@@ -8,18 +8,18 @@ import pptxgen from "pptxgenjs";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const T = {
-  bg:      "08080C",
-  surface: "0E1422",
+  bg:      "FFFFFF",
+  surface: "F8FAFC",
   accent:  "10B981",
-  accentDk:"065F46",
-  white:   "FFFFFF",
-  gray1:   "DCE1EB",
-  gray2:   "A0AABB",
-  gray3:   "50596C",
-  border:  "1E2840",
-  red:     "EF4444",
-  amber:   "F59E0B",
-  blue:    "3B82F6",
+  accentDk:"059669",
+  heading: "0F172A",
+  gray1:   "334155",
+  gray2:   "64748B",
+  gray3:   "94A3B8",
+  border:  "E2E8F0",
+  red:     "DC2626",
+  amber:   "D97706",
+  blue:    "2563EB",
 };
 
 // ─── Slide layout helpers ──────────────────────────────────────────────────────
@@ -34,9 +34,9 @@ function applyBase(slide) {
 function addHeader(slide, title, subtitle = "") {
   slide.addShape("rect", { x: 0, y: 0, w: "100%", h: 1.0, fill: { color: T.surface } });
   // Brand
-  slide.addText("⚡ AgentForgeX", { x: 0.15, y: 0.08, w: 2, h: 0.35, fontSize: 11, bold: true, color: T.accent, fontFace: "Calibri" });
+  slide.addText("AgentForgeX", { x: 0.15, y: 0.08, w: 2, h: 0.35, fontSize: 11, bold: true, color: T.accent, fontFace: "Calibri" });
   // Title
-  slide.addText(title, { x: 0.15, y: 0.4, w: 8.5, h: 0.5, fontSize: 18, bold: true, color: T.white, fontFace: "Calibri" });
+  slide.addText(title, { x: 0.15, y: 0.4, w: 8.5, h: 0.5, fontSize: 18, bold: true, color: T.heading, fontFace: "Calibri" });
   if (subtitle) {
     slide.addText(subtitle, { x: 0.15, y: 0.75, w: 8.5, h: 0.25, fontSize: 10, color: T.gray2, fontFace: "Calibri" });
   }
@@ -81,7 +81,7 @@ function addCoverSlide(pptx, data, title, pageNum) {
   slide.addShape("ellipse", { x: 6.5, y: -1, w: 5, h: 5, fill: { type: "solid", color: "10B981", transparency: 93 } });
 
   // Brand
-  slide.addText("⚡ AgentForgeX", { x: 0.2, y: 0.2, w: 3, h: 0.4, fontSize: 14, bold: true, color: T.accent, fontFace: "Calibri" });
+  slide.addText("AgentForgeX", { x: 0.2, y: 0.2, w: 3, h: 0.4, fontSize: 14, bold: true, color: T.accent, fontFace: "Calibri" });
   // Confidential badge
   slide.addShape("roundRect", { x: 8.8, y: 0.2, w: 1.1, h: 0.3, fill: { color: T.surface }, line: { color: T.accent, pt: 0.5 }, rectRadius: 0.05 });
   slide.addText("CONFIDENTIAL", { x: 8.8, y: 0.23, w: 1.1, h: 0.22, fontSize: 6, bold: true, color: T.accent, align: "center", fontFace: "Calibri" });
@@ -92,7 +92,7 @@ function addCoverSlide(pptx, data, title, pageNum) {
 
   // Main title
   const displayTitle = title || cp.title || "Agentic AI Technical Design";
-  slide.addText(displayTitle, { x: 0.2, y: 1.95, w: 7.5, h: 1.8, fontSize: 26, bold: true, color: T.white, fontFace: "Calibri", wrap: true });
+  slide.addText(displayTitle, { x: 0.2, y: 1.95, w: 7.5, h: 1.8, fontSize: 26, bold: true, color: T.heading, fontFace: "Calibri", wrap: true });
 
   // Subtitle
   if (cp.subtitle) {
@@ -112,7 +112,7 @@ function addCoverSlide(pptx, data, title, pageNum) {
     const x = 0.2 + (i % 2) * 4.8;
     const y = 4.6 + Math.floor(i / 2) * 0.75;
     slide.addText(m.label, { x, y, w: 4.5, h: 0.2, fontSize: 7, bold: true, color: T.accent, fontFace: "Calibri" });
-    slide.addText(m.value, { x, y: y + 0.2, w: 4.5, h: 0.35, fontSize: 12, color: T.white, fontFace: "Calibri" });
+    slide.addText(m.value, { x, y: y + 0.2, w: 4.5, h: 0.35, fontSize: 12, color: T.heading, fontFace: "Calibri" });
   });
 
   addFooter(slide, pageNum);
@@ -158,13 +158,13 @@ function addWorkflowSlide(pptx, pageNum) {
   addHeader(slide, "Agentic Process Workflow", "Operating Model: Hierarchical Orchestrator  |  Reasoning: Plan-and-Execute + ReAct");
 
   const stages = [
-    { label: "Input\nCollection",   color: T.blue,   icon: "📥" },
-    { label: "Data\nProcessing",    color: "8B5CF6", icon: "⚙️" },
-    { label: "AI\nAnalysis",        color: T.accent, icon: "🧠" },
-    { label: "Multi-Agent\nCollab", color: "EC4899", icon: "🤝" },
-    { label: "Validation",          color: T.amber,  icon: "✅" },
-    { label: "Design\nGen",         color: "0EA5E9", icon: "📄" },
-    { label: "Final\nOutput",       color: T.accent, icon: "🚀" },
+    { label: "Input\nCollection",   color: T.blue,   abbr: "IN" },
+    { label: "Data\nProcessing",    color: "7C3AED", abbr: "DP" },
+    { label: "AI\nAnalysis",        color: T.accent, abbr: "AI" },
+    { label: "Multi-Agent\nCollab", color: "DB2777", abbr: "MA" },
+    { label: "Validation",          color: T.amber,  abbr: "VA" },
+    { label: "Design\nGen",         color: "0EA5E9", abbr: "DG" },
+    { label: "Final\nOutput",       color: T.accent, abbr: "FO" },
   ];
 
   const nodeW = 1.2;
@@ -188,8 +188,9 @@ function addWorkflowSlide(pptx, pageNum) {
     // top color bar
     slide.addShape("roundRect", { x: nx, y: rowY, w: nodeW, h: 0.18, fill: { color: s.color }, rectRadius: 0.04 });
 
-    // icon
-    slide.addText(s.icon, { x: nx, y: rowY + 0.22, w: nodeW, h: 0.4, fontSize: 18, align: "center" });
+    // icon -- colored rectangle with abbreviation
+    slide.addShape("roundRect", { x: nx + (nodeW - 0.5) / 2, y: rowY + 0.22, w: 0.5, h: 0.4, fill: { color: s.color }, rectRadius: 0.06 });
+    slide.addText(s.abbr, { x: nx, y: rowY + 0.22, w: nodeW, h: 0.4, fontSize: 11, bold: true, color: "FFFFFF", align: "center", fontFace: "Calibri" });
     // label
     slide.addText(s.label, { x: nx, y: rowY + 0.68, w: nodeW, h: 0.65, fontSize: 8, bold: true, color: T.gray1, align: "center", fontFace: "Calibri", wrap: true });
   });
@@ -221,7 +222,7 @@ function addAgentsSlide(pptx, agents, layerName, pageNum) {
       // left accent
       slide.addShape("rect", { x: 0.15, y: cardY, w: 0.08, h: 1.7, fill: { color: T.accent } });
 
-      slide.addText(`${agent.agent_id}. ${agent.name}`, { x: 0.35, y: cardY + 0.1, w: 7, h: 0.3, fontSize: 12, bold: true, color: T.white, fontFace: "Calibri" });
+      slide.addText(`${agent.agent_id}. ${agent.name}`, { x: 0.35, y: cardY + 0.1, w: 7, h: 0.3, fontSize: 12, bold: true, color: T.heading, fontFace: "Calibri" });
       slide.addText(agent.role || "", { x: 0.35, y: cardY + 0.4, w: 7, h: 0.3, fontSize: 9.5, color: T.accent, fontFace: "Calibri" });
 
       // Framework badge
@@ -259,7 +260,7 @@ function addTableSlide(pptx, title, headers, rows, pageNum, subtitle = "") {
   const dataRows = rows.map((row, ri) =>
     row.map(cell => ({
       text: String(cell ?? ""),
-      options: { color: T.gray1, fill: ri % 2 === 0 ? "0F1828" : T.bg, fontSize: 9, fontFace: "Calibri", wrap: true }
+      options: { color: T.gray1, fill: ri % 2 === 0 ? "F1F5F9" : T.bg, fontSize: 9, fontFace: "Calibri", wrap: true }
     }))
   );
 
@@ -327,7 +328,7 @@ function addTechStackSlide(pptx, stack, pageNum) {
     ],
     ...rows.map((row, ri) => row.map(cell => ({
       text: cell,
-      options: { color: T.gray1, fill: ri % 2 === 0 ? "0F1828" : T.bg, fontSize: 9, fontFace: "Calibri" },
+      options: { color: T.gray1, fill: ri % 2 === 0 ? "F1F5F9" : T.bg, fontSize: 9, fontFace: "Calibri" },
     }))),
   ], {
     x: 0.15, y: 1.05, w: 9.5, colW: [2.8, 6.7],

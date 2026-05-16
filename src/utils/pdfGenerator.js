@@ -8,19 +8,19 @@ import jsPDF from "jspdf";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg:        [8,   12,  20],   // near-black
-  surface:   [14,  20,  34],   // card bg
+  bg:        [255, 255, 255],  // pure white
+  surface:   [248, 250, 252],  // light gray card bg
   accent:    [16,  185, 129],  // brand green (#10b981)
-  accentDim: [10,  110, 76],   // darker green
-  white:     [255, 255, 255],
-  gray1:     [220, 225, 235],  // headings
-  gray2:     [160, 170, 185],  // sub-text
-  gray3:     [80,  90,  108],  // muted
-  border:    [30,  40,  60],
-  red:       [239, 68,  68],
-  amber:     [245, 158, 11],
-  yellow:    [234, 179, 8],
-  blue:      [59,  130, 246],
+  accentDim: [5,   150, 105],  // darker green
+  heading:   [15,  23,  42],   // slate-900 for headings
+  gray1:     [51,  65,  85],   // slate-600 body text
+  gray2:     [100, 116, 139],  // slate-500 sub-text
+  gray3:     [148, 163, 184],  // slate-400 muted
+  border:    [226, 232, 240],  // slate-200
+  red:       [220, 38,  38],
+  amber:     [217, 119, 6],
+  yellow:    [202, 138, 4],
+  blue:      [37,  99,  235],
 };
 
 const PW = 210; // A4 width mm
@@ -81,7 +81,7 @@ function badge(doc, label, x, y, bg = C.accent, fg = C.bg, size = 7) {
 function sectionHeader(doc, title, y) {
   rect(doc, ML, y, 3, 7, C.accent, 1);
   setFont(doc, "bold", 14);
-  rgb(doc, C.white);
+  rgb(doc, C.heading);
   text(doc, title, ML + 6, y + 5.5);
   return y + 13;
 }
@@ -113,9 +113,9 @@ function checkPage(doc, y, needed = 20) {
 function drawPageBg(doc) {
   fill(doc, C.bg);
   doc.rect(0, 0, PW, PH, "F");
-  // subtle corner accent
-  fill(doc, C.accentDim);
-  doc.rect(0, 0, 3, PH, "F");
+  // subtle left accent bar
+  fill(doc, C.accent);
+  doc.rect(0, 0, 2, PH, "F");
 }
 
 // ─── Cover page ───────────────────────────────────────────────────────────────
@@ -123,16 +123,9 @@ function drawPageBg(doc) {
 function drawCover(doc, data) {
   const cp = data.cover_page || data.document_metadata || {};
 
-  // Full dark background
+  // White background
   fill(doc, C.bg);
   doc.rect(0, 0, PW, PH, "F");
-
-  // Gradient-like layered rectangles (top right glow)
-  fill(doc, [16, 185, 129, 0.08]);
-  doc.setFillColor(16, 185, 129);
-  doc.setGState(new doc.GState({ opacity: 0.06 }));
-  doc.ellipse(PW + 10, -10, 80, 80, "F");
-  doc.setGState(new doc.GState({ opacity: 1 }));
 
   // Left accent bar
   rect(doc, 0, 0, 4, PH, C.accent);
@@ -141,7 +134,7 @@ function drawCover(doc, data) {
   rect(doc, 0, 0, PW, 18, C.surface);
   setFont(doc, "bold", 11);
   rgb(doc, C.accent);
-  text(doc, "⚡ AgentForgeX", 12, 12);
+  text(doc, "AgentForgeX", 12, 12);
   setFont(doc, "normal", 8);
   rgb(doc, C.gray3);
   text(doc, "POWERED BY AGENTIC AI", PW - MR - 42, 12);
@@ -163,7 +156,7 @@ function drawCover(doc, data) {
   // Main title
   const title = cp.title || "Agentic AI Technical Design";
   setFont(doc, "bold", 22);
-  rgb(doc, C.white);
+  rgb(doc, C.heading);
   const titleLines = doc.splitTextToSize(title, CW - 10);
   titleLines.forEach((ln, i) => text(doc, ln, ML + 4, 80 + i * 12));
 
@@ -196,7 +189,7 @@ function drawCover(doc, data) {
     rgb(doc, C.accent);
     text(doc, label.toUpperCase(), bx + 4, by);
     setFont(doc, "normal", 10);
-    rgb(doc, C.white);
+    rgb(doc, C.heading);
     text(doc, val, bx + 4, by + 6);
   });
 
@@ -217,7 +210,7 @@ function drawTOC(doc, sections) {
   // Header
   rect(doc, ML, y, CW, 14, C.surface, 3);
   setFont(doc, "bold", 15);
-  rgb(doc, C.white);
+  rgb(doc, C.heading);
   text(doc, "Table of Contents", ML + 6, y + 10);
   rect(doc, ML, y + 13, CW, 0.5, C.accent);
   y += 22;
@@ -230,7 +223,7 @@ function drawTOC(doc, sections) {
     const page = sec.page || "";
 
     // alternating row
-    if (i % 2 === 0) rect(doc, ML, y - 4, CW, 9, [18, 25, 42], 2);
+    if (i % 2 === 0) rect(doc, ML, y - 4, CW, 9, [241, 245, 249], 2);
 
     setFont(doc, "bold", 9);
     rgb(doc, C.accent);
@@ -265,17 +258,17 @@ function drawWorkflow(doc, y) {
   y = sectionHeader(doc, "Agentic Process Workflow", y);
 
   const stages = [
-    { icon: "📥", label: "Input\nCollection",   color: C.blue },
-    { icon: "⚙️", label: "Data\nProcessing",    color: [139, 92, 246] },
-    { icon: "🧠", label: "AI\nAnalysis",         color: C.accent },
-    { icon: "🤝", label: "Multi-Agent\nCollab",  color: [236, 72, 153] },
-    { icon: "✅", label: "Validation",            color: C.amber },
-    { icon: "📄", label: "Design\nGeneration",   color: [14, 165, 233] },
-    { icon: "🚀", label: "Final\nOutput",         color: C.accent },
+    { abbr: "IN", label: "Input\nCollection",   color: C.blue },
+    { abbr: "DP", label: "Data\nProcessing",    color: [124, 58, 237] },
+    { abbr: "AI", label: "AI\nAnalysis",         color: C.accent },
+    { abbr: "MA", label: "Multi-Agent\nCollab",  color: [219, 39, 119] },
+    { abbr: "VA", label: "Validation",            color: C.amber },
+    { abbr: "DG", label: "Design\nGeneration",   color: [14, 165, 233] },
+    { abbr: "FO", label: "Final\nOutput",         color: C.accent },
   ];
 
   const nodeW = 22;
-  const nodeH = 20;
+  const nodeH = 22;
   const gap = (CW - stages.length * nodeW) / (stages.length - 1);
   const rowY = y + 8;
 
@@ -289,7 +282,6 @@ function drawWorkflow(doc, y) {
       stroke(doc, C.gray3);
       doc.setLineWidth(0.5);
       doc.line(ax, ay, ax + gap - 2, ay);
-      // arrowhead
       fill(doc, C.gray3);
       doc.triangle(ax + gap - 2, ay - 1.5, ax + gap - 2, ay + 1.5, ax + gap + 1, ay, "F");
     }
@@ -303,16 +295,21 @@ function drawWorkflow(doc, y) {
     // top color bar
     rect(doc, nx, rowY, nodeW, 3, s.color, 2);
 
-    // icon (use text emoji fallback)
-    setFont(doc, "normal", 9);
-    rgb(doc, C.white);
-    text(doc, s.icon.replace(/\uFE0F/g, ""), nx + nodeW / 2, rowY + 10, { align: "center" });
+    // icon -- colored circle with 2-letter abbreviation (font-safe)
+    const circR = 4.5;
+    const circCx = nx + nodeW / 2;
+    const circCy = rowY + 9;
+    fill(doc, s.color);
+    doc.circle(circCx, circCy, circR, "F");
+    setFont(doc, "bold", 6);
+    rgb(doc, [255, 255, 255]);
+    text(doc, s.abbr, circCx, circCy + 2, { align: "center" });
 
     // label
     setFont(doc, "bold", 5.5);
     rgb(doc, C.gray1);
     const lblLines = s.label.split("\n");
-    lblLines.forEach((ln, li) => text(doc, ln, nx + nodeW / 2, rowY + 14 + li * 4, { align: "center" }));
+    lblLines.forEach((ln, li) => text(doc, ln, nx + nodeW / 2, rowY + 16 + li * 4, { align: "center" }));
   });
 
   // Operating model label
@@ -390,7 +387,7 @@ function drawSection(doc, section, secIndex) {
   rgb(doc, C.accentDim);
   text(doc, num, ML, y + 12);
   setFont(doc, "bold", 16);
-  rgb(doc, C.white);
+  rgb(doc, C.heading);
   text(doc, section.title || "Section", ML + 22, y + 12);
   rect(doc, ML + 22, y + 15, CW - 22, 0.5, C.accent);
   y += 24;
@@ -410,7 +407,7 @@ function drawSection(doc, section, secIndex) {
           y = checkPage(doc, y, 30);
           card(doc, ML, y, CW, 28);
           setFont(doc, "bold", 9.5);
-          rgb(doc, C.white);
+          rgb(doc, C.heading);
           text(doc, `Agent ${agent.agent_id}: ${agent.name}`, ML + 4, y + 7);
           setFont(doc, "italic", 8);
           rgb(doc, C.accent);
@@ -437,7 +434,7 @@ function drawSection(doc, section, secIndex) {
           y = checkPage(doc, y, 18);
           card(doc, ML, y, CW, 16);
           setFont(doc, "bold", 9);
-          rgb(doc, C.white);
+          rgb(doc, C.heading);
           text(doc, comp.component_name || comp.name || "", ML + 4, y + 6);
           if (comp.responsibilities) {
             setFont(doc, "normal", 7.5);
@@ -473,7 +470,7 @@ function drawSection(doc, section, secIndex) {
     section.subsections.forEach((sub) => {
       y = checkPage(doc, y, 16);
       setFont(doc, "bold", 10);
-      rgb(doc, C.white);
+      rgb(doc, C.heading);
       rect(doc, ML, y - 3, 3, 8, C.accent, 1);
       text(doc, `${sub.section_number || ""} ${sub.title}`, ML + 6, y + 3);
       y += 10;
@@ -484,7 +481,7 @@ function drawSection(doc, section, secIndex) {
           card(doc, ML, y, CW, 18);
           badge(doc, String(p.id || ""), ML + 4, y + 7, C.accent, C.bg, 7);
           setFont(doc, "bold", 9);
-          rgb(doc, C.white);
+          rgb(doc, C.heading);
           text(doc, p.name || "", ML + 14, y + 7);
           y = wrappedText(doc, p.application || "", ML + 6, y + 12, CW - 10, 7.5, C.gray2, "normal", 4.5);
           y += 4;
@@ -528,7 +525,7 @@ function drawSection(doc, section, secIndex) {
         y = checkPage(doc, y, 14);
         card(doc, ML, y, CW, 12);
         setFont(doc, "bold", 9);
-        rgb(doc, C.white);
+        rgb(doc, C.heading);
         text(doc, item.name || "", ML + 4, y + 5);
         if (item.role || item.purpose) {
           setFont(doc, "normal", 7.5);
@@ -555,7 +552,7 @@ function drawSection(doc, section, secIndex) {
       rgb(doc, C.gray2);
       y = wrappedText(doc, tool.purpose || "", ML + 4, y + 12, CW - 60, 8, C.gray2, "normal", 4.5);
       if (tool.invoked_by) {
-        badge(doc, `Invoked by: ${tool.invoked_by}`, PW - MR - 55, y - 8, C.accentDim, C.white, 6.5);
+        badge(doc, `Invoked by: ${tool.invoked_by}`, PW - MR - 55, y - 8, C.accentDim, [255,255,255], 6.5);
       }
       y += 5;
     });
@@ -576,7 +573,7 @@ function drawSection(doc, section, secIndex) {
       card(doc, ML, y, CW, 22);
       rect(doc, ML, y, 4, 22, railColor, 2);
       setFont(doc, "bold", 9.5);
-      rgb(doc, C.white);
+      rgb(doc, C.heading);
       text(doc, rail.rail_type || "", ML + 8, y + 7);
       if (rail.functions) {
         rail.functions.slice(0, 2).forEach((fn, fi) => {
@@ -667,7 +664,7 @@ function drawSection(doc, section, secIndex) {
       rgb(doc, C.gray2);
       text(doc, k.replace(/_/g, " ").toUpperCase(), ML + 4, y + 4);
       setFont(doc, "normal", 8);
-      rgb(doc, C.white);
+      rgb(doc, C.heading);
       text(doc, vals.join("  •  "), ML + 50, y + 4);
       // badge per item
       let bx = ML + 4;
@@ -706,7 +703,7 @@ function drawSection(doc, section, secIndex) {
       card(doc, ML, y, CW, 12);
       badge(doc, String(i + 1), ML + 4, y + 8, C.accent, C.bg, 8);
       setFont(doc, "bold", 9.5);
-      rgb(doc, C.white);
+      rgb(doc, C.heading);
       text(doc, wf.workflow_name || "", ML + 14, y + 8);
       y += 15;
     });
@@ -720,7 +717,7 @@ function drawFooter(doc, pageNum) {
   rect(doc, 0, PH - 10, PW, 10, C.surface);
   setFont(doc, "normal", 6.5);
   rgb(doc, C.gray3);
-  text(doc, "⚡ AgentForgeX  |  Confidential – AI-Generated Technical Design", ML, PH - 4);
+  text(doc, "AgentForgeX  |  Confidential - AI-Generated Technical Design", ML, PH - 4);
   text(doc, `Page ${pageNum} of ${total}`, PW - MR - 14, PH - 4);
 }
 
