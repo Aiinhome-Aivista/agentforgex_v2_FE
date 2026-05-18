@@ -151,7 +151,7 @@ function drawCover(d, data) {
   const meta = [
     ["DATE",             new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
     ["SYSTEM",           process.erp_system || "Enterprise"],
-    ["SCORE",            `${Math.round(process.automation_score || 0)}%`],
+    ["AUTOMATION SCORE", `${Math.round(process.automation_score || 0)}%`],
     ["CLASSIFICATION",   "Confidential"],
   ];
   const colW = CW / 2;
@@ -162,7 +162,7 @@ function drawCover(d, data) {
     ink(d, C.accent); // Restore label in green
     text(d, label, x, y);
     setFont(d, "bold", 15);
-    ink(d, label === "SCORE" ? C.accent : C.navy); // Emerald for score value
+    ink(d, label === "AUTOMATION SCORE" ? C.accent : C.navy); // Emerald for score value
     text(d, String(val), x, y + 8);
   });
 

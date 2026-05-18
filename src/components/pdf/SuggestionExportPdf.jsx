@@ -23,8 +23,8 @@ import { generatePPTX } from "../../utils/pptxGenerator";
 // ─── Format options ──────────────────────────────────────────────────────────
 const FORMATS = [
   { id: "pdf",  label: "Export as PDF",        Icon: FileIcon,     iconCls: "text-red-400",    fn: generatePDF  },
-  { id: "word", label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
-  { id: "pptx", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  // { id: "word", label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
+  // { id: "pptx", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
 ];
 
 // Strip axios envelopes if present, return the actual payload
@@ -75,11 +75,12 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       if (!suggestionId) throw new Error("Suggestion ID is missing.");
 
       // Process flow comes from the analysis (not the suggestion). Prefer
-      // analysisId stored on the suggestion; fall back to processData ids.
+      // the real process/analysis ID from processData; fall back to suggestion
+      // analysisId (which is the workspace ID in saved workspaces) or suggestionId.
       const analysisId =
-        suggestion?.analysisId ||
         processData?.process?._key ||
         processData?.process?.id ||
+        suggestion?.analysisId ||
         suggestionId;
 
       // Fetch BOTH in parallel — flow is optional, design is required.
