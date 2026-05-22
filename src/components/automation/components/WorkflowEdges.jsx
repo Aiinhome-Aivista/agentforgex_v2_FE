@@ -22,7 +22,7 @@ export function Defs({ markerId = MARKER_ID }) {
         refY="5"
         markerWidth="8"
         markerHeight="8"
-        orient="auto-start-reverse"
+        orient="auto"
       >
         <path d="M 0 1 L 8 5 L 0 9 z" fill={COLORS.edge} />
       </marker>
@@ -163,198 +163,357 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
 
     const edgeLabel = conn.label || "";
 
-    switch (conn.type) {
+    // Automatically resolve effective type based on relative position to fix vertical alignment bugs
+    let effectiveType = conn.type;
+    if (Math.abs(f.cx - t.cx) < 30) {
+      // Vertically aligned -> treat as down (unless it's semantic yes/no from decision diamond)
+      if (conn.type !== "yes" && conn.type !== "no") {
+        effectiveType = "down";
+      }
+    } else if (Math.abs(f.cy - t.cy) < 15) {
+      // Horizontally aligned -> treat as inline
+      effectiveType = "inline";
+    }
+
+    const isDownward = f.cy < t.cy;
+    const isRightward = f.cx < t.cx;
+
+    switch (effectiveType) {
       /* ── Horizontal within lane ─────────────────────── */
       case "inline": {
-        // Source right edge
         let x1, y1;
-        if (f.type === "start") {
-          // Start pill: right edge
-          const pillW = START_R * 2.4;
-          x1 = f.cx + pillW / 2;
-          y1 = f.cy;
-        } else if (f.type === "decision") {
-          x1 = f.cx + DIAMOND_S;
-          y1 = f.cy;
-        } else {
-          x1 = f.cx + NODE_W / 2;
-          y1 = f.cy;
-        }
-
-        // Target left edge
         let x2, y2;
-        if (t.type === "decision") {
-          x2 = t.cx - DIAMOND_S;
-          y2 = t.cy;
-        } else {
-          x2 = t.cx - NODE_W / 2;
-          y2 = t.cy + staggerOffset;
-        }
 
-        // If same row — straight horizontal
-        if (Math.abs(y1 - y2) < 5) {
+        if (isRightward) {
+          // Exit right of f
+          if (f.type === "start") {
+            const pillW = START_R * 2.4;
+            x1 = f.cx + pillW / 2;
+          } else if (f.type === "decision") {
+            x1 = f.cx + DIAMOND_S;
+          } else {
+            x1 = f.cx + NODE_W / 2;
+          }
+          y1 = f.cy;
+
+          // Enter left of t
+          if (t.type === "decision") {
+            x2 = t.cx - DIAMOND_S;
+          } else {
+            x2 = t.cx - NODE_W / 2;
+          }
+          y2 = t.cy + staggerOffset;
+
+          // Straight horizontal
+          if (Math.abs(y1 - y2) < 5) {
+            return (
+              <Seg
+                key={i}
+                x1={x1 + GAP} y1={y1}
+                x2={x2 - GAP} y2={y2}
+                label={edgeLabel}
+                markerId={markerId}
+              />
+            );
+          }
+
+          // Orthogonal elbow
+          const midX = (x1 + x2) / 2 + midStagger;
           return (
-            <Seg
+            <Elbow
               key={i}
-              x1={x1 + GAP} y1={y1}
-              x2={x2 - GAP} y2={y2}
+              pts={[
+                [x1 + GAP, y1],
+                [midX, y1],
+                [midX, y2],
+                [x2 - GAP, y2],
+              ]}
+              label={edgeLabel}
+              markerId={markerId}
+            />
+          );
+        } else {
+          // Exit left of f
+          if (f.type === "start") {
+            const pillW = START_R * 2.4;
+            x1 = f.cx - pillW / 2;
+          } else if (f.type === "decision") {
+            x1 = f.cx - DIAMOND_S;
+          } else {
+            x1 = f.cx - NODE_W / 2;
+          }
+          y1 = f.cy;
+
+          // Enter right of t
+          if (t.type === "decision") {
+            x2 = t.cx + DIAMOND_S;
+          } else {
+            x2 = t.cx + NODE_W / 2;
+          }
+          y2 = t.cy + staggerOffset;
+
+          // Straight horizontal
+          if (Math.abs(y1 - y2) < 5) {
+            return (
+              <Seg
+                key={i}
+                x1={x1 - GAP} y1={y1}
+                x2={x2 + GAP} y2={y2}
+                label={edgeLabel}
+                markerId={markerId}
+              />
+            );
+          }
+
+          // Orthogonal elbow
+          const midX = (x1 + x2) / 2 + midStagger;
+          return (
+            <Elbow
+              key={i}
+              pts={[
+                [x1 - GAP, y1],
+                [midX, y1],
+                [midX, y2],
+                [x2 + GAP, y2],
+              ]}
               label={edgeLabel}
               markerId={markerId}
             />
           );
         }
-
-        // Different row — orthogonal elbow: right → down/up → right
-        const midX = (x1 + x2) / 2 + midStagger;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1 + GAP, y1],
-              [midX, y1],
-              [midX, y2],
-              [x2 - GAP, y2],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
       }
 
       /* ── Straight down (next lane) ──────────────────── */
-      case "down": {
-        const x1 = f.type === "start" ? f.cx : f.cx;
-        const y1 = f.type === "start"
-          ? f.cy + (START_R * 1.3) / 2
-          : f.cy + NODE_H / 2;
+      case "down":
+      case "diagonal_down": {
+        let x1, y1;
+        let x2, y2;
 
-        const x2 = t.cx + staggerOffset;
-        const y2 = t.type === "decision"
-          ? t.cy - DIAMOND_S
-          : t.cy - NODE_H / 2;
+        if (isDownward) {
+          // Exit bottom of f
+          x1 = f.cx;
+          y1 = f.type === "start"
+            ? f.cy + (START_R * 1.3) / 2
+            : f.cy + NODE_H / 2;
 
-        // Same column — straight vertical
-        if (Math.abs(x1 - x2) < 5) {
-          return (
-            <Seg
-              key={i}
-              x1={x1} y1={y1 + GAP}
-              x2={x2} y2={y2 - GAP}
-              label={edgeLabel}
-              markerId={markerId}
-            />
-          );
-        }
+          // Enter top of t
+          x2 = t.cx + staggerOffset;
+          y2 = t.type === "decision"
+            ? t.cy - DIAMOND_S
+            : t.cy - NODE_H / 2;
 
-        // Different column — orthogonal: down → across → down
-        const midY = (y1 + y2) / 2 + midStagger;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1, y1 + GAP],
-              [x1, midY],
-              [x2, midY],
-              [x2, y2 - GAP],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
-      }
-
-      /* ── YES — from diamond bottom to target top ────── */
-      case "yes": {
-        const x1 = f.cx;
-        const y1 = f.cy + DIAMOND_S;
-        const x2 = t.cx + staggerOffset;
-        const y2 = t.cy - NODE_H / 2;
-
-        // Label position
-        const labelX = x1 + 14;
-        const labelY = y1 + 4;
-
-        // Same column — straight down
-        if (Math.abs(x1 - x2) < 5) {
-          return (
-            <g key={i}>
+          // Same column — straight vertical
+          if (Math.abs(x1 - x2) < 5) {
+            return (
               <Seg
+                key={i}
                 x1={x1} y1={y1 + GAP}
                 x2={x2} y2={y2 - GAP}
+                label={edgeLabel}
                 markerId={markerId}
               />
-              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
-            </g>
-          );
-        }
+            );
+          }
 
-        // Different column — orthogonal routing
-        const midY = (y1 + y2) / 2 + midStagger;
-        return (
-          <g key={i}>
+          // Different column — orthogonal
+          const midY = (y1 + y2) / 2 + midStagger;
+          return (
             <Elbow
+              key={i}
               pts={[
                 [x1, y1 + GAP],
                 [x1, midY],
                 [x2, midY],
                 [x2, y2 - GAP],
               ]}
+              label={edgeLabel}
               markerId={markerId}
             />
-            <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
-          </g>
-        );
+          );
+        } else {
+          // Exit top of f
+          x1 = f.cx;
+          y1 = f.type === "start"
+            ? f.cy - (START_R * 1.3) / 2
+            : f.cy - NODE_H / 2;
+
+          // Enter bottom of t
+          x2 = t.cx + staggerOffset;
+          y2 = t.type === "decision"
+            ? t.cy + DIAMOND_S
+            : t.cy + NODE_H / 2;
+
+          // Same column — straight vertical
+          if (Math.abs(x1 - x2) < 5) {
+            return (
+              <Seg
+                key={i}
+                x1={x1} y1={y1 - GAP}
+                x2={x2} y2={y2 + GAP}
+                label={edgeLabel}
+                markerId={markerId}
+              />
+            );
+          }
+
+          // Different column — orthogonal
+          const midY = (y1 + y2) / 2 + midStagger;
+          return (
+            <Elbow
+              key={i}
+              pts={[
+                [x1, y1 - GAP],
+                [x1, midY],
+                [x2, midY],
+                [x2, y2 + GAP],
+              ]}
+              label={edgeLabel}
+              markerId={markerId}
+            />
+          );
+        }
+      }
+
+      /* ── YES — from diamond bottom to target top ────── */
+      case "yes": {
+        let x1, y1;
+        let x2, y2;
+
+        if (isDownward) {
+          x1 = f.cx;
+          y1 = f.cy + DIAMOND_S;
+          x2 = t.cx + staggerOffset;
+          y2 = t.type === "decision"
+            ? t.cy - DIAMOND_S
+            : t.cy - NODE_H / 2;
+
+          const labelX = x1 + 14;
+          const labelY = y1 + 4;
+
+          if (Math.abs(x1 - x2) < 5) {
+            return (
+              <g key={i}>
+                <Seg
+                  x1={x1} y1={y1 + GAP}
+                  x2={x2} y2={y2 - GAP}
+                  markerId={markerId}
+                />
+                <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
+              </g>
+            );
+          }
+
+          const midY = (y1 + y2) / 2 + midStagger;
+          return (
+            <g key={i}>
+              <Elbow
+                pts={[
+                  [x1, y1 + GAP],
+                  [x1, midY],
+                  [x2, midY],
+                  [x2, y2 - GAP],
+                ]}
+                markerId={markerId}
+              />
+              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
+            </g>
+          );
+        } else {
+          x1 = f.cx;
+          y1 = f.cy - DIAMOND_S;
+          x2 = t.cx + staggerOffset;
+          y2 = t.type === "decision"
+            ? t.cy + DIAMOND_S
+            : t.cy + NODE_H / 2;
+
+          const labelX = x1 + 14;
+          const labelY = y1 - 4;
+
+          if (Math.abs(x1 - x2) < 5) {
+            return (
+              <g key={i}>
+                <Seg
+                  x1={x1} y1={y1 - GAP}
+                  x2={x2} y2={y2 + GAP}
+                  markerId={markerId}
+                />
+                <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
+              </g>
+            );
+          }
+
+          const midY = (y1 + y2) / 2 + midStagger;
+          return (
+            <g key={i}>
+              <Elbow
+                pts={[
+                  [x1, y1 - GAP],
+                  [x1, midY],
+                  [x2, midY],
+                  [x2, y2 + GAP],
+                ]}
+                markerId={markerId}
+              />
+              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "Yes"} />
+            </g>
+          );
+        }
       }
 
       /* ── NO — from diamond right to target ─────────── */
       case "no": {
-        const x1 = f.cx + DIAMOND_S;
-        const y1 = f.cy;
-        const x2 = t.cx + staggerOffset;
-        const y2 = t.cy - NODE_H / 2;
+        let x1, y1;
+        let x2, y2;
 
-        // Label position
-        const labelX = x1 + 14;
-        const labelY = y1 - 4;
+        if (isRightward) {
+          x1 = f.cx + DIAMOND_S;
+          y1 = f.cy;
+          x2 = t.cx + staggerOffset;
+          y2 = isDownward
+            ? (t.type === "decision" ? t.cy - DIAMOND_S : t.cy - NODE_H / 2)
+            : (t.type === "decision" ? t.cy + DIAMOND_S : t.cy + NODE_H / 2);
 
-        // Route: right from diamond → down to target top
-        return (
-          <g key={i}>
-            <Elbow
-              pts={[
-                [x1 + GAP, y1],
-                [x2, y1],
-                [x2, y2 - GAP],
-              ]}
-              markerId={markerId}
-            />
-            <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "No"} />
-          </g>
-        );
-      }
+          const labelX = x1 + 14;
+          const labelY = y1 - 4;
 
-      /* ── Diagonal down ─────────────────────────────── */
-      case "diagonal_down": {
-        const x1 = f.cx;
-        const y1 = f.cy + NODE_H / 2;
-        const x2 = t.cx + staggerOffset;
-        const y2 = t.cy - NODE_H / 2;
+          return (
+            <g key={i}>
+              <Elbow
+                pts={[
+                  [x1 + GAP, y1],
+                  [x2, y1],
+                  [x2, isDownward ? y2 - GAP : y2 + GAP],
+                ]}
+                markerId={markerId}
+              />
+              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "No"} />
+            </g>
+          );
+        } else {
+          x1 = f.cx - DIAMOND_S;
+          y1 = f.cy;
+          x2 = t.cx + staggerOffset;
+          y2 = isDownward
+            ? (t.type === "decision" ? t.cy - DIAMOND_S : t.cy - NODE_H / 2)
+            : (t.type === "decision" ? t.cy + DIAMOND_S : t.cy + NODE_H / 2);
 
-        // Use orthogonal routing instead of true diagonal
-        const midY = (y1 + y2) / 2 + midStagger;
-        return (
-          <Elbow
-            key={i}
-            pts={[
-              [x1, y1 + GAP],
-              [x1, midY],
-              [x2, midY],
-              [x2, y2 - GAP],
-            ]}
-            label={edgeLabel}
-            markerId={markerId}
-          />
-        );
+          const labelX = x1 - 14;
+          const labelY = y1 - 4;
+
+          return (
+            <g key={i}>
+              <Elbow
+                pts={[
+                  [x1 - GAP, y1],
+                  [x2, y1],
+                  [x2, isDownward ? y2 - GAP : y2 + GAP],
+                ]}
+                markerId={markerId}
+              />
+              <EdgeLabel x={labelX} y={labelY} label={edgeLabel || "No"} />
+            </g>
+          );
+        }
       }
 
       default:

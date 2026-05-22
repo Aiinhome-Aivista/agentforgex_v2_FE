@@ -72,20 +72,20 @@ export default function ExportPDF({ data }) {
               <FileIcon size={14} className="text-red-500" />
               <span>Export as PDF</span>
             </button>
-            {/* <button
+            <button
               onClick={() => handleDownload("word")}
               className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
             >
               <FileText size={14} className="text-blue-500" />
               <span>Export as Word</span>
-            </button> */}
-            {/* <button
+            </button> 
+             <button
               onClick={() => handleDownload("pptx")}
               className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-lg transition-all text-left"
             >
               <Presentation size={14} className="text-orange-500" />
               <span>Export as PPT</span>
-            </button> */}
+            </button>
           </div>
         </div>
       )}

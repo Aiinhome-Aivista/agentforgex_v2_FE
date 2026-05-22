@@ -23,8 +23,8 @@ import { generatePPTX } from "../../utils/pptxGenerator";
 // ─── Format options ──────────────────────────────────────────────────────────
 const FORMATS = [
   { id: "pdf",  label: "Export as PDF",        Icon: FileIcon,     iconCls: "text-red-400",    fn: generatePDF  },
-  // { id: "word", label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
-  // { id: "pptx", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  { id: "word", label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
+  { id: "pptx", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
 ];
 
 // Strip axios envelopes if present, return the actual payload
