@@ -1,33 +1,35 @@
 /**
- * SuggestionExportPdf.jsx
- * Orchestrates PDF / DOCX / PPTX export via native programmatic generators.
+ * SuggestionExportPdf.jsx — UPDATED
  *
- * Fetches both:
- *   - getTechnicalDesign(suggestionId)  → the structured doc content
- *   - getProcessFlow(analysisId)        → the REAL business swimlane
- *
- * Both are passed to each generator so the Agentic Process Workflow slide/page
- * shows the actual P2P (or whichever) lanes, not a generic pipeline.
+ * Spec section 3:
+ *   In the download dropdown (already shows Export as PDF / Word / PowerPoint),
+ *   ADD a new entry: **"Download the Code"** which downloads a ZIP containing
+ *   the generated source code/scripts for the workflow automation.
  */
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   Download, Loader2, FileText, Presentation,
-  File as FileIcon, ChevronDown,
+  File as FileIcon, ChevronDown, FileArchive,
 } from "lucide-react";
-import { getTechnicalDesign, getProcessFlow } from "../../services/api";
+import {
+  getTechnicalDesign, getProcessFlow, downloadSuggestionCode,
+} from "../../services/api";
 import { generatePDF  } from "../../utils/pdfGenerator";
 import { generateDOCX } from "../../utils/docxGenerator";
 import { generatePPTX } from "../../utils/pptxGenerator";
 
 // ─── Format options ──────────────────────────────────────────────────────────
+// `kind: "doc"` items are document exports (PDF / DOCX / PPTX).
+// `kind: "code"` is the new ZIP download — different code path.
 const FORMATS = [
-  { id: "pdf",  label: "Export as PDF",        Icon: FileIcon,     iconCls: "text-red-400",    fn: generatePDF  },
-  { id: "word", label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
-  { id: "pptx", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  { id: "pdf",  kind: "doc",  label: "Export as PDF",        Icon: FileIcon,     iconCls: "text-red-400",    fn: generatePDF  },
+  { id: "word", kind: "doc",  label: "Export as Word",       Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
+  { id: "pptx", kind: "doc",  label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  // ─── NEW ───────────────────────────────────────────────────────────────
+  { id: "code", kind: "code", label: "Download the Code",    Icon: FileArchive,  iconCls: "text-emerald-400" },
 ];
 
-// Strip axios envelopes if present, return the actual payload
 function unwrap(res) {
   if (!res) return res;
   if (res.data !== undefined && (res.status !== undefined || res.config !== undefined)) {
@@ -36,13 +38,11 @@ function unwrap(res) {
   return res;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
 export default function SuggestionExportPdf({ suggestion, processData }) {
   const [isExporting, setIsExporting] = useState(false);
   const [activeFormat, setActiveFormat] = useState(null);
   const [showFormats, setShowFormats] = useState(false);
-  const [toastMsg, setToastMsg]   = useState(null);
+  const [toastMsg, setToastMsg] = useState(null);
   const [toastType, setToastType] = useState("error");
   const menuRef = useRef(null);
 
@@ -74,16 +74,20 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       const suggestionId = suggestion?.id || suggestion?._key;
       if (!suggestionId) throw new Error("Suggestion ID is missing.");
 
-      // Process flow comes from the analysis (not the suggestion). Prefer
-      // the real process/analysis ID from processData; fall back to suggestion
-      // analysisId (which is the workspace ID in saved workspaces) or suggestionId.
+      // ── NEW: source-code ZIP path ─────────────────────────────────────
+      if (format.kind === "code") {
+        const { filename } = await downloadSuggestionCode(suggestionId);
+        toast(`Code bundle downloaded${filename ? `: ${filename}` : ''}.`, "success");
+        return;
+      }
+
+      // ── Existing document export path ─────────────────────────────────
       const analysisId =
         processData?.process?._key ||
         processData?.process?.id ||
         suggestion?.analysisId ||
         suggestionId;
 
-      // Fetch BOTH in parallel — flow is optional, design is required.
       const [designRes, flowRes] = await Promise.allSettled([
         getTechnicalDesign(suggestionId),
         getProcessFlow(analysisId),
@@ -98,15 +102,24 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
         throw new Error("Invalid or empty technical-design payload.");
       }
 
-      const flow = flowRes.status === "fulfilled" ? unwrap(flowRes.value) : null;
+      // Prefer the workflow graph that the technical-design endpoint built
+      // (canonical, with Start/End nodes).  The backend may emit it under
+      // either key — accept both.  Fall back to the /flow endpoint last.
+      const flow =
+        design?.workflow_graph ||
+        design?.agentic_workflow_graph ||
+        (flowRes.status === "fulfilled" ? unwrap(flowRes.value) : null);
+
       if (flowRes.status !== "fulfilled") {
-        console.warn("[ExportPdf] process flow fetch failed; falling back to generic workflow:", flowRes.reason);
+        console.warn("[ExportPdf] /flow fetch failed; using design.workflow_graph:", flowRes.reason);
       }
 
-      const title = suggestion?.title || design?.cover_page?.title || "AgentForgeX_Technical_Design";
+      const title =
+        suggestion?.title ||
+        design?.cover_page?.title ||
+        "AgentForgeX_Technical_Design";
 
       await format.fn(design, title, flow);
-
       toast("Export complete!", "success");
     } catch (err) {
       console.error(`[ExportPdf] ${formatId} export failed:`, err);
@@ -174,7 +187,7 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
         {showFormats && (
           <div
             className="
-              absolute right-0 top-12 w-52
+              absolute right-0 top-12 w-56
               bg-[#0a0d18] border border-white/10 rounded-xl shadow-2xl
               z-[100] overflow-hidden
               animate-in fade-in slide-in-from-top-2 duration-150
@@ -182,28 +195,31 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
             role="menu"
           >
             <div className="p-2 flex flex-col gap-0.5">
-              {FORMATS.map(({ id, label, Icon, iconCls }) => (
-                <button
-                  key={id}
-                  onClick={() => handleDownload(id)}
-                  className="
-                    w-full flex items-center gap-3 px-3 py-2.5
-                    text-[10px] font-bold uppercase tracking-widest
-                    text-white/60 hover:text-brand-500 hover:bg-brand-500/10
-                    rounded-lg transition-all duration-150 text-left
-                  "
-                  role="menuitem"
-                >
-                  <Icon size={14} className={iconCls} />
-                  <span>{label}</span>
-                </button>
+              {FORMATS.map(({ id, label, Icon, iconCls, kind }) => (
+                <React.Fragment key={id}>
+                  {/* Visual divider before the code option */}
+                  {kind === "code" && (
+                    <div className="my-1 border-t border-white/10" />
+                  )}
+                  <button
+                    onClick={() => handleDownload(id)}
+                    className="
+                      w-full flex items-center gap-3 px-3 py-2.5
+                      text-[10px] font-bold uppercase tracking-widest
+                      text-white/60 hover:text-brand-500 hover:bg-brand-500/10
+                      rounded-lg transition-all duration-150 text-left
+                    "
+                    role="menuitem"
+                  >
+                    <Icon size={14} className={iconCls} />
+                    <span>{label}</span>
+                    {kind === "code" && (
+                      <span className="ml-auto text-[8px] text-emerald-400/70">ZIP</span>
+                    )}
+                  </button>
+                </React.Fragment>
               ))}
             </div>
-            {/* <div className="px-3 pb-2 pt-0">
-              <p className="text-[8px] text-white/20 uppercase tracking-widest text-center">
-                Real swimlane • Native vector • Fast
-              </p>
-            </div> */}
           </div>
         )}
       </div>

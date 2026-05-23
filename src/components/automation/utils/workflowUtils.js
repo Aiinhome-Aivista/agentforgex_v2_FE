@@ -58,69 +58,27 @@ export const COLORS = {
 
 /* ─── Lane accent color palette (cycling) ────────────── */
 export const LANE_ACCENTS = [
-  { // Blue
-    accent: "#3B82F6",
-    bg: "rgba(59,130,246,0.04)",
-    tint: "rgba(59,130,246,0.06)",
-    badge_bg: "rgba(59,130,246,0.10)",
-    badge_fg: "#2563EB",
-    node_tint: "rgba(59,130,246,0.05)",
-    node_bar: "#3B82F6",
-  },
-  { // Emerald
-    accent: "#10B981",
-    bg: "rgba(16,185,129,0.04)",
-    tint: "rgba(16,185,129,0.06)",
-    badge_bg: "rgba(16,185,129,0.10)",
-    badge_fg: "#059669",
-    node_tint: "rgba(16,185,129,0.05)",
-    node_bar: "#10B981",
-  },
-  { // Violet
-    accent: "#8B5CF6",
-    bg: "rgba(139,92,246,0.04)",
-    tint: "rgba(139,92,246,0.06)",
-    badge_bg: "rgba(139,92,246,0.10)",
-    badge_fg: "#7C3AED",
-    node_tint: "rgba(139,92,246,0.05)",
-    node_bar: "#8B5CF6",
-  },
-  { // Amber
-    accent: "#F59E0B",
-    bg: "rgba(245,158,11,0.04)",
-    tint: "rgba(245,158,11,0.06)",
-    badge_bg: "rgba(245,158,11,0.10)",
-    badge_fg: "#D97706",
-    node_tint: "rgba(245,158,11,0.05)",
-    node_bar: "#F59E0B",
-  },
-  { // Rose
-    accent: "#F43F5E",
-    bg: "rgba(244,63,94,0.04)",
-    tint: "rgba(244,63,94,0.06)",
-    badge_bg: "rgba(244,63,94,0.10)",
-    badge_fg: "#E11D48",
-    node_tint: "rgba(244,63,94,0.05)",
-    node_bar: "#F43F5E",
-  },
-  { // Cyan
-    accent: "#06B6D4",
-    bg: "rgba(6,182,212,0.04)",
-    tint: "rgba(6,182,212,0.06)",
-    badge_bg: "rgba(6,182,212,0.10)",
-    badge_fg: "#0891B2",
-    node_tint: "rgba(6,182,212,0.05)",
-    node_bar: "#06B6D4",
-  },
-  { // Indigo
-    accent: "#6366F1",
-    bg: "rgba(99,102,241,0.04)",
-    tint: "rgba(99,102,241,0.06)",
-    badge_bg: "rgba(99,102,241,0.10)",
-    badge_fg: "#4F46E5",
-    node_tint: "rgba(99,102,241,0.05)",
-    node_bar: "#6366F1",
-  },
+  { accent: "#3B82F6", bg: "rgba(59,130,246,0.04)",  tint: "rgba(59,130,246,0.06)",
+    badge_bg: "rgba(59,130,246,0.10)", badge_fg: "#2563EB",
+    node_tint: "rgba(59,130,246,0.05)", node_bar: "#3B82F6" },
+  { accent: "#10B981", bg: "rgba(16,185,129,0.04)",  tint: "rgba(16,185,129,0.06)",
+    badge_bg: "rgba(16,185,129,0.10)", badge_fg: "#059669",
+    node_tint: "rgba(16,185,129,0.05)", node_bar: "#10B981" },
+  { accent: "#8B5CF6", bg: "rgba(139,92,246,0.04)",  tint: "rgba(139,92,246,0.06)",
+    badge_bg: "rgba(139,92,246,0.10)", badge_fg: "#7C3AED",
+    node_tint: "rgba(139,92,246,0.05)", node_bar: "#8B5CF6" },
+  { accent: "#F59E0B", bg: "rgba(245,158,11,0.04)",  tint: "rgba(245,158,11,0.06)",
+    badge_bg: "rgba(245,158,11,0.10)", badge_fg: "#D97706",
+    node_tint: "rgba(245,158,11,0.05)", node_bar: "#F59E0B" },
+  { accent: "#F43F5E", bg: "rgba(244,63,94,0.04)",   tint: "rgba(244,63,94,0.06)",
+    badge_bg: "rgba(244,63,94,0.10)",  badge_fg: "#E11D48",
+    node_tint: "rgba(244,63,94,0.05)", node_bar: "#F43F5E" },
+  { accent: "#06B6D4", bg: "rgba(6,182,212,0.04)",   tint: "rgba(6,182,212,0.06)",
+    badge_bg: "rgba(6,182,212,0.10)",  badge_fg: "#0891B2",
+    node_tint: "rgba(6,182,212,0.05)", node_bar: "#06B6D4" },
+  { accent: "#6366F1", bg: "rgba(99,102,241,0.04)",  tint: "rgba(99,102,241,0.06)",
+    badge_bg: "rgba(99,102,241,0.10)", badge_fg: "#4F46E5",
+    node_tint: "rgba(99,102,241,0.05)", node_bar: "#6366F1" },
 ];
 
 /* Legacy LANE_STYLES (backwards compat — maps to LANE_ACCENTS) */
@@ -154,9 +112,93 @@ export const wrapText = (text, maxLineChars = 20) => {
   return lines.length ? lines : [""];
 };
 
+/* ─────────────────────────────────────────────────────────────────────────
+   NEW — ensureStartEndNodes
+   Client-side safety net:  even if the backend response somehow ships a
+   workflow without a Start or End node, we inject them here so the UI
+   always renders the canonical pattern (spec section 4).
+
+   Returns a *new* shallow-cloned data object — does not mutate input.
+   ───────────────────────────────────────────────────────────────────────── */
+export const ensureStartEndNodes = (data) => {
+  if (!data || !Array.isArray(data.lanes) || data.lanes.length === 0) {
+    return data;
+  }
+
+  // Deep enough clone for safe mutation
+  const lanes = data.lanes.map((l) => ({
+    ...l,
+    nodes: Array.isArray(l.nodes) ? [...l.nodes] : [],
+  }));
+  const flow = Array.isArray(data.flow) ? [...data.flow] : [];
+
+  // Inspect existing state
+  const allNodes = lanes.flatMap((l) => l.nodes);
+  const idSet = new Set(allNodes.map((n) => n.id).filter(Boolean));
+  const types = allNodes.map((n) => (n.type || "").toLowerCase());
+  const hasStart = types.includes("start");
+  const hasEnd   = types.includes("end");
+
+  if (hasStart && hasEnd) return data;
+
+  // Compute column range
+  const cols = allNodes
+    .map((n) => n.column)
+    .filter((c) => typeof c === "number");
+  const minCol = cols.length ? Math.min(...cols) : 1;
+  const maxCol = cols.length ? Math.max(...cols) : 1;
+
+  // Identify entry / exit nodes by edge connectivity
+  const inbound  = new Map();
+  const outbound = new Map();
+  for (const e of flow) {
+    if (!e || !e.from || !e.to) continue;
+    inbound.set(e.to,    (inbound.get(e.to)    || 0) + 1);
+    outbound.set(e.from, (outbound.get(e.from) || 0) + 1);
+  }
+  const entry = allNodes.find((n) => n.id && !inbound.get(n.id))  || allNodes[0];
+  const exit  = [...allNodes].reverse().find((n) => n.id && !outbound.get(n.id)) || allNodes[allNodes.length - 1];
+
+  // Helper — produce a non-colliding id
+  const uniqueId = (base) => {
+    let id = base;
+    let i = 1;
+    while (idSet.has(id)) { id = `${base}_${i++}`; }
+    idSet.add(id);
+    return id;
+  };
+
+  if (!hasStart && entry) {
+    const startId = uniqueId("__start__");
+    lanes[0].nodes.unshift({
+      id:     startId,
+      type:   "start",
+      label:  "Start",
+      column: Math.max(0, minCol - 1),
+    });
+    flow.unshift({ from: startId, to: entry.id });
+  }
+
+  if (!hasEnd && exit) {
+    const endId = uniqueId("__end__");
+    lanes[lanes.length - 1].nodes.push({
+      id:     endId,
+      type:   "end",
+      label:  "End",
+      column: maxCol + 1,
+    });
+    flow.push({ from: exit.id, to: endId });
+  }
+
+  return { ...data, lanes, flow };
+};
+
 /* Build node map with optional wrapping */
 export const buildWorkflowLayout = (data, opts = {}) => {
-  if (!data || !data.lanes) {
+  // ─── NEW: apply the Start/End safety net before laying out ─────────────
+  const safeData = ensureStartEndNodes(data);
+
+  if (!safeData || !safeData.lanes) {
     return { nodeMap: {}, laneMeta: [], totalHeight: 0, maxRight: 0 };
   }
 
@@ -166,7 +208,7 @@ export const buildWorkflowLayout = (data, opts = {}) => {
   let totalHeight = 0;
   let maxRight = 0;
 
-  data.lanes.forEach((lane, li) => {
+  safeData.lanes.forEach((lane, li) => {
     const nodes = lane.nodes || [];
     const maxCol = nodes.reduce((m, n) => Math.max(m, n.column ?? 1), 0);
     const rowCount = Math.floor(maxCol / maxCols) + 1;
@@ -194,7 +236,7 @@ export const buildWorkflowLayout = (data, opts = {}) => {
     totalHeight += laneHeight;
   });
 
-  return { nodeMap: nm, laneMeta, totalHeight, maxRight };
+  return { nodeMap: nm, laneMeta, totalHeight, maxRight, safeData };
 };
 
 /* Build node map from data (backwards compatible) */
