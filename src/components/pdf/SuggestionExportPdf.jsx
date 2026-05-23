@@ -170,7 +170,7 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
             <>
               <Loader2 size={18} className="animate-spin text-black" />
               <span className="text-black text-xs font-bold uppercase tracking-widest">
-                {activeFormat?.toUpperCase() ?? "…"}
+                {activeFormat === "code" ? "Generating Code" : (activeFormat?.toUpperCase() ?? "…")}
               </span>
             </>
           ) : (

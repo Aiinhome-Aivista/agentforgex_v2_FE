@@ -108,4 +108,10 @@ export const downloadSuggestionCode = async (suggestionId) => {
   return { filename: `agentforgex_${suggestionId}.zip` }
 }
 
+export const triggerReanalysis = (processKey, additionalContext) =>
+  api.post('/chatbot/reanalyze', {
+    process_key: processKey,
+    additional_context: additionalContext,
+  })
+
 export default api
