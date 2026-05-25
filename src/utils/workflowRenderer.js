@@ -61,11 +61,75 @@ export function hasFlowData(flow) {
 }
 
 /**
+ * Client-side safety net: even if the backend response somehow ships a
+ * workflow without a Start or End node, we inject them here so the layout
+ * always renders the canonical pattern (spec section 4), matching the UI.
+ */
+export function ensureStartEndNodes(data) {
+  if (!data || !Array.isArray(data.lanes) || data.lanes.length === 0) {
+    return data;
+  }
+
+  // Deep enough clone for safe mutation
+  const lanes = data.lanes.map((l) => ({
+    ...l,
+    nodes: Array.isArray(l.nodes) ? [...l.nodes] : [],
+  }));
+  const flow = Array.isArray(data.flow) ? [...data.flow] : [];
+
+  // Inspect existing state
+  const allNodes = lanes.flatMap((l) => l.nodes);
+  const idSet = new Set(allNodes.map((n) => n.id).filter(Boolean));
+  const types = allNodes.map((n) => (n.type || "").toLowerCase());
+  const hasStart = types.includes("start");
+
+  if (hasStart) return data;
+
+  // Compute column range
+  const cols = allNodes
+    .map((n) => n.column)
+    .filter((c) => typeof c === "number");
+  const minCol = cols.length ? Math.min(...cols) : 1;
+
+  // Identify entry nodes by edge connectivity
+  const inbound  = new Map();
+  for (const e of flow) {
+    if (!e || !e.from || !e.to) continue;
+    inbound.set(e.to, (inbound.get(e.to) || 0) + 1);
+  }
+  const entry = allNodes.find((n) => n.id && !inbound.get(n.id)) || allNodes[0];
+
+  // Helper — produce a non-colliding id
+  const uniqueId = (base) => {
+    let id = base;
+    let i = 1;
+    while (idSet.has(id)) { id = `${base}_${i++}`; }
+    idSet.add(id);
+    return id;
+  };
+
+  if (!hasStart && entry) {
+    const startId = uniqueId("__start__");
+    lanes[0].nodes.unshift({
+      id:     startId,
+      type:   "start",
+      label:  "Start",
+      column: Math.max(0, minCol - 1),
+    });
+    flow.unshift({ from: startId, to: entry.id });
+  }
+
+  return { ...data, lanes, flow };
+}
+
+/**
  * Compute a pure-data layout in millimetres. Each lane occupies one row;
  * all columns used across all lanes share a single horizontal grid so the
  * diagram reads as a true swimlane (BPMN-style).
  */
 export function layoutWorkflow(flow, opts = {}) {
+  const safeFlow = ensureStartEndNodes(flow);
+
   const cfg = {
     nodeW:          opts.nodeW          ?? 48,
     nodeH:          opts.nodeH          ?? 18,
@@ -74,17 +138,19 @@ export function layoutWorkflow(flow, opts = {}) {
     laneLabelWidth: opts.laneLabelWidth ?? 32,
     titleHeight:    opts.titleHeight    ?? 10,
     padding:        opts.padding        ?? 4,
+    maxCols:        opts.maxCols        ?? 6,
+    rowGap:         opts.rowGap         ?? 8,
   };
-  const { nodeW, nodeH, colGap, laneHeight, laneLabelWidth, titleHeight, padding } = cfg;
+  const { nodeW, nodeH, colGap, laneHeight, laneLabelWidth, titleHeight, padding, maxCols, rowGap } = cfg;
 
-  if (!hasFlowData(flow)) {
-    return { title: flow?.title || "", width: 0, height: 0, lanes: [], nodes: [], edges: [] };
+  if (!hasFlowData(safeFlow)) {
+    return { title: safeFlow?.title || "", width: 0, height: 0, lanes: [], nodes: [], edges: [] };
   }
 
   // 1. Collect every used column index across all lanes and densify them.
   const usedColsSet = new Set();
-  flow.lanes.forEach((lane) => {
-    (lane.nodes || []).forEach((n) => usedColsSet.add(n.column ?? 1));
+  safeFlow.lanes.forEach((lane) => {
+    (lane.nodes || []).forEach((n) => usedColsSet.add((n.column ?? 1) % maxCols));
   });
   const usedCols = Array.from(usedColsSet).sort((a, b) => a - b);
   const nCols = Math.max(1, usedCols.length);
@@ -99,32 +165,42 @@ export function layoutWorkflow(flow, opts = {}) {
     return padding + laneLabelWidth + idx * (nodeW + colGap);
   };
 
-  // 2. Lay out each lane on its own row.
+  // 2. Lay out each lane on its own row(s).
   const lanes = [];
   const nodesById = {};
   const allNodes = [];
   let cursorY = padding + titleHeight;
 
-  flow.lanes.forEach((lane, li) => {
+  safeFlow.lanes.forEach((lane, li) => {
     const accent = LANE_ACCENTS[li % LANE_ACCENTS.length];
     const laneTop = cursorY;
+
+    // Calculate maximum column index inside this lane to determine the row count
+    const maxCol = (lane.nodes || []).reduce((m, n) => Math.max(m, n.column ?? 1), 0);
+    const rowCount = Math.floor(maxCol / maxCols) + 1;
+    const currentLaneH = rowCount * laneHeight + (rowCount - 1) * rowGap;
 
     lanes.push({
       id:     lane.id,
       label:  lane.label || "",
       top:    laneTop,
-      height: laneHeight,
+      height: currentLaneH,
       accent: accent.accent,
       tint:   accent.tint,
       text:   accent.text,
       index:  li,
+      rowCount,
     });
 
     (lane.nodes || []).forEach((node) => {
       const type = (node.type || "process").toLowerCase();
       const col  = node.column ?? 1;
-      const x    = colLeftX(col);
-      const y    = laneTop + (laneHeight - nodeH) / 2;
+      const row  = Math.floor(col / maxCols);
+      const colInRow = col % maxCols;
+
+      const x    = colLeftX(colInRow);
+      // Vertically center the node inside its specific row of the lane
+      const y    = laneTop + row * (laneHeight + rowGap) + (laneHeight - nodeH) / 2;
       let fill, stroke, text;
 
       if (type === "start" || type === "end") {
@@ -153,24 +229,30 @@ export function layoutWorkflow(flow, opts = {}) {
         fill, stroke, text,
         accent:    accent.accent,
         laneIndex: li,
+        rowIndex:  row,
         col,
       };
       nodesById[node.id] = laidNode;
       allNodes.push(laidNode);
     });
 
-    cursorY += laneHeight;
+    cursorY += currentLaneH;
   });
 
-  // 3. Compute edge endpoints.
-  const edges = (flow.flow || []).map((e) => {
+  // 3. Compute edge endpoints using physical relative positions for maximum accuracy
+  const edges = (safeFlow.flow || []).map((e) => {
     const a = nodesById[e.from];
     const b = nodesById[e.to];
     if (!a || !b) return null;
 
     let fromX, fromY, toX, toY;
-    if (a.col !== b.col) {
-      if (b.col > a.col) {
+    let routing = "horizontal";
+
+    const isInline = a.laneIndex === b.laneIndex && a.rowIndex === b.rowIndex;
+
+    if (isInline) {
+      routing = "horizontal";
+      if (b.cx > a.cx) {
         fromX = a.x + a.w; fromY = a.cy;
         toX   = b.x;       toY   = b.cy;
       } else {
@@ -178,6 +260,7 @@ export function layoutWorkflow(flow, opts = {}) {
         toX   = b.x + b.w; toY   = b.cy;
       }
     } else {
+      routing = "vertical";
       if (b.cy > a.cy) {
         fromX = a.cx; fromY = a.y + a.h;
         toX   = b.cx; toY   = b.y;
@@ -193,11 +276,12 @@ export function layoutWorkflow(flow, opts = {}) {
       fromX, fromY, toX, toY,
       kind:   a.laneIndex === b.laneIndex ? "intralane" : "interlane",
       label:  e.label || "",
+      routing,
     };
   }).filter(Boolean);
 
   return {
-    title:  flow.title || "Process Workflow",
+    title:  safeFlow.title || "Process Workflow",
     width:  totalW,
     height: cursorY + padding,
     lanes,

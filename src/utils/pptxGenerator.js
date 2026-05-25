@@ -11,15 +11,15 @@ import { layoutWorkflow, hasFlowData } from "./workflowRenderer";
 
 // ─── Theme tokens (hex sans '#') ─────────────────────────────────────────────
 const T = {
-  paper:     "FFFFFF",
-  ink:       "0F172A",
-  inkSoft:   "475569",
-  inkMuted:  "94A3B8",
-  rule:      "E2E8F0",
-  surface:   "F8FAFC",
-  brand:     "10B981",
-  brandDk:   "059669",
-  navy:      "1E293B",
+  paper: "FFFFFF",
+  ink: "0F172A",
+  inkSoft: "475569",
+  inkMuted: "94A3B8",
+  rule: "E2E8F0",
+  surface: "F8FAFC",
+  brand: "10B981",
+  brandDk: "059669",
+  navy: "1E293B",
 };
 
 const stripHash = (h) => (h || "").replace("#", "").toUpperCase();
@@ -126,9 +126,9 @@ function addCoverSlide(pptx, data, titleArg) {
 
   // Metadata grid: 4 cells
   const grid = [
-    ["DATE",           cp.date || "—"],
-    ["VERSION",        cp.version || "Draft V1.0"],
-    ["ORGANIZATION",   "AgentForge"],
+    ["DATE", cp.date || "—"],
+    ["VERSION", cp.version || "Draft V1.0"],
+    ["ORGANIZATION", "AgentForge"],
     ["CLASSIFICATION", "Confidential"],
   ];
   const baseX = 0.4, baseY = 5.4, colW = 2.32, rowH = 0.95;
@@ -164,7 +164,7 @@ function addTOCSlide(pptx, data) {
 
   const rows = [
     [
-      { text: "#",       options: { bold: true, color: T.paper, fill: { color: T.navy }, fontSize: 11 } },
+      { text: "#", options: { bold: true, color: T.paper, fill: { color: T.navy }, fontSize: 11 } },
       { text: "Section", options: { bold: true, color: T.paper, fill: { color: T.navy }, fontSize: 11 } },
     ],
     ...items.map(([n, t], i) => [
@@ -189,7 +189,7 @@ function addWorkflowSlide(pptx, flowData) {
   applyBase(slide);
   addHeader(slide, "AGENTIC PROCESS WORKFLOW");
   addTitle(slide, null, "Agentic Process Workflow",
-           "Operating Model: Agentic Operations  •  End-to-end business process flow");
+    "Operating Model: Agentic Operations  •  End-to-end business process flow");
 
   if (!hasFlowData(flowData)) {
     slide.addText("Process flow data not available for this analysis.", {
@@ -208,11 +208,11 @@ function addWorkflowSlide(pptx, flowData) {
 
   // mm → inches (1 in = 25.4 mm); then additional scale to fit both dims
   const mmToIn = 1 / 25.4;
-  const widthIn  = layout.width  * mmToIn;
+  const widthIn = layout.width * mmToIn;
   const heightIn = layout.height * mmToIn;
   const scale = Math.min(availW / widthIn, availH / heightIn);
 
-  const renderW = widthIn  * scale;
+  const renderW = widthIn * scale;
   const renderH = heightIn * scale;
   const offsetX = availX + (availW - renderW) / 2;
   const offsetY = availY;
@@ -268,7 +268,14 @@ function addWorkflowSlide(pptx, flowData) {
     const y2 = toY(edge.toY);
     const color = edge.kind === "interlane" ? T.inkMuted : T.inkSoft;
 
-    if (Math.abs(y1 - y2) < 0.01) {
+    if (edge.routing === "vertical") {
+      // Right-angle elbow vertical-first: x1,y1 → x1,mid → x2,mid → x2,y2
+      const midY = (y1 + y2) / 2;
+      slide.addShape("line", { x: x1, y: Math.min(y1, midY), w: 0, h: Math.abs(midY - y1), line: { color, width: 1 } });
+      const w = x2 - x1;
+      slide.addShape("line", { x: w < 0 ? x2 : x1, y: midY, w: Math.abs(w), h: 0, flipH: w < 0, line: { color, width: 1 } });
+      slide.addShape("line", { x: x2, y: Math.min(midY, y2), w: 0, h: Math.abs(y2 - midY), line: { color, width: 1, endArrowType: "triangle" } });
+    } else if (Math.abs(y1 - y2) < 0.01) {
       // Straight horizontal
       const w = x2 - x1;
       slide.addShape("line", {
@@ -303,9 +310,9 @@ function addWorkflowSlide(pptx, flowData) {
     const y = toY(node.y);
     const w = toS(node.w);
     const h = toS(node.h);
-    const fill   = stripHash(node.fill);
-    const lineC  = stripHash(node.stroke);
-    const textC  = stripHash(node.text);
+    const fill = stripHash(node.fill);
+    const lineC = stripHash(node.stroke);
+    const textC = stripHash(node.text);
 
     if (node.type === "start" || node.type === "end") {
       slide.addShape("roundRect", {
@@ -408,9 +415,9 @@ function addExecutiveSummarySlide(pptx, num, section) {
     y += 0.95;
   };
 
-  if (c.purpose)                       addBlock("Purpose", c.purpose);
-  if (c.problem_statement)             addBlock("Problem Statement", c.problem_statement);
-  if (c.design_philosophy?.statement)  addBlock("Design Philosophy", c.design_philosophy.statement, true);
+  if (c.purpose) addBlock("Purpose", c.purpose);
+  if (c.problem_statement) addBlock("Problem Statement", c.problem_statement);
+  if (c.design_philosophy?.statement) addBlock("Design Philosophy", c.design_philosophy.statement, true);
 
   if (Array.isArray(c.primary_goals) && c.primary_goals.length) {
     slide.addText("Primary Goals", {
@@ -516,11 +523,11 @@ function addSectionSlides(pptx, section, index) {
   if (section.frameworks) {
     const fw = section.frameworks;
     const groups = [
-      ["Orchestration",    fw.orchestration],
-      ["RAG Frameworks",   fw.rag_frameworks],
-      ["Guardrails",       fw.guardrails],
+      ["Orchestration", fw.orchestration],
+      ["RAG Frameworks", fw.rag_frameworks],
+      ["Guardrails", fw.guardrails],
       ["Evaluation Tools", fw.evaluation_tools],
-      ["Protocols",        fw.protocols],
+      ["Protocols", fw.protocols],
     ];
     groups.forEach(([label, list]) => {
       if (!Array.isArray(list) || !list.length) return;
@@ -642,7 +649,7 @@ export async function generatePPTX(data, title = "Technical_Design", flowData = 
   pptx.layout = "STD_10X75";
   pptx.author = "AgentForgeX";
   // Sanitize title for metadata properties (remove non-ascii for stability)
-  pptx.title  = (title || "Technical_Design").replace(/[^\x00-\x7F]/g, " ");
+  pptx.title = (title || "Technical_Design").replace(/[^\x00-\x7F]/g, " ");
 
   // Define a single white-paper master with footer
   pptx.defineSlideMaster({

@@ -19,22 +19,22 @@ import { layoutWorkflow, hasFlowData } from "./workflowRenderer";
 
 /* ─── Palette ────────────────────────────────────────────────────────── */
 const C = {
-  bg:        [255, 255, 255],
-  surface:   [248, 250, 252],
-  card:      [255, 255, 255],
-  accent:    [16, 185, 129],
-  accentDk:  [4, 120, 87],
-  navy:      [15, 23, 42],
-  ink:       [30, 41, 59],
-  gray1:     [51, 65, 85],
-  gray2:     [100, 116, 139],
-  gray3:     [148, 163, 184],
-  gray4:     [203, 213, 225],
-  border:    [226, 232, 240],
-  red:       [220, 38, 38],
-  amber:     [217, 119, 6],
-  blue:      [37, 99, 235],
-  violet:    [124, 58, 237],
+  bg: [255, 255, 255],
+  surface: [248, 250, 252],
+  card: [255, 255, 255],
+  accent: [16, 185, 129],
+  accentDk: [4, 120, 87],
+  navy: [15, 23, 42],
+  ink: [30, 41, 59],
+  gray1: [51, 65, 85],
+  gray2: [100, 116, 139],
+  gray3: [148, 163, 184],
+  gray4: [203, 213, 225],
+  border: [226, 232, 240],
+  red: [220, 38, 38],
+  amber: [217, 119, 6],
+  blue: [37, 99, 235],
+  violet: [124, 58, 237],
 };
 
 const PW = 210, PH = 297;
@@ -43,22 +43,22 @@ const CW = PW - ML - MR;
 const FOOTER_H = 10;
 
 /* ─── Drawing helpers ────────────────────────────────────────────────── */
-const fill   = (d, c) => d.setFillColor(...c);
+const fill = (d, c) => d.setFillColor(...c);
 const stroke = (d, c) => d.setDrawColor(...c);
-const ink    = (d, c) => d.setTextColor(...c);
+const ink = (d, c) => d.setTextColor(...c);
 const setFont = (d, w = "normal", s = 10) => { d.setFontSize(s); d.setFont("helvetica", w); };
 const text = (d, s, x, y, o) => { if (s != null) d.text(String(s), x, y, o); };
 
 function rect(d, x, y, w, h, color, r = 0) {
   fill(d, color);
   if (r > 0) d.roundedRect(x, y, w, h, r, r, "F");
-  else       d.rect(x, y, w, h, "F");
+  else d.rect(x, y, w, h, "F");
 }
 function strokeRect(d, x, y, w, h, color, lw = 0.2, r = 0) {
   stroke(d, color);
   d.setLineWidth(lw);
   if (r > 0) d.roundedRect(x, y, w, h, r, r, "S");
-  else       d.rect(x, y, w, h, "S");
+  else d.rect(x, y, w, h, "S");
 }
 function hLine(d, x1, y, x2, color = C.border, lw = 0.2) {
   stroke(d, color);
@@ -183,9 +183,9 @@ function drawCover(d, data, suggestionTitle) {
   rect(d, ML, 175, CW, 0.6, C.accent);
 
   const meta = [
-    ["DATE",           cp.date           || "—"],
-    ["VERSION",        cp.version        || "Draft V1.0"],
-    ["ORGANIZATION",   "AgentForge"],
+    ["DATE", cp.date || "—"],
+    ["VERSION", cp.version || "Draft V1.0"],
+    ["ORGANIZATION", "AgentForge"],
     ["CLASSIFICATION", cp.classification || "Confidential"],
   ];
   const colW = CW / 2;
@@ -310,7 +310,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   // Diagram area (in physical mm)
   const usableW = lpw - 36;
   const usableH = lph - 60;       // 45mm header + 15mm footer
-  const startY  = 43;
+  const startY = 43;
 
   // ── Sizing strategy ─────────────────────────────────────────────────
   // Pick dimensions in mm so the diagram fits the page natively, without
@@ -320,9 +320,9 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   // - If they still overflow, an X-ONLY scale is applied to the content
   //   area; vertical dims and label width stay intact.
   const laneLabelW = 38;
-  const colGap     = 8;
-  let   nodeH      = 16;
-  let   laneHeight = 30;
+  const colGap = 8;
+  let nodeH = 16;
+  let laneHeight = 30;
 
   // Count distinct columns
   const usedColsSet = new Set();
@@ -394,7 +394,7 @@ function drawSwimlaneWorkflowPage(d, flowData) {
     // Lane row background — soft tint matching the lane accent so each lane
     // reads as a distinct horizontal band, the way the UI shows them.
     rect(d, ox + laneLabelW, ly, renderedW - laneLabelW, lh,
-         hexToRgb(lane.tint), 0);
+      hexToRgb(lane.tint), 0);
 
     // Lane label cell — same tint, with a stronger left accent stripe
     rect(d, ox, ly, laneLabelW, lh, hexToRgb(lane.tint), 0);
@@ -421,8 +421,8 @@ function drawSwimlaneWorkflowPage(d, flowData) {
     const totalH = labelLines.length * lineH;
     labelLines.forEach((ln, li) => {
       text(d, ln, chipX + chipW / 2,
-           chipY + chipH / 2 - totalH / 2 + lineH * 0.85 + li * lineH,
-           { align: "center" });
+        chipY + chipH / 2 - totalH / 2 + lineH * 0.85 + li * lineH,
+        { align: "center" });
     });
 
     // Dashed bottom separator between lanes
@@ -446,22 +446,33 @@ function drawSwimlaneWorkflowPage(d, flowData) {
     d.setLineWidth(0.4);
     const head = 1.8;
 
-    if (Math.abs(fy - ty) < 0.5) {
+    if (e.routing === "vertical") {
+      // Orthogonal elbow vertical-first
+      const midY = (fy + ty) / 2;
+      d.line(fx, fy, fx, midY);
+      d.line(fx, midY, tx, midY);
+      const dir = ty >= midY ? 1 : -1;
+      d.line(tx, midY, tx, ty - dir * head);
+      fill(d, C.gray2);
+      d.triangle(tx, ty,
+        tx - head * 0.6, ty - dir * head,
+        tx + head * 0.6, ty - dir * head, "F");
+    } else if (Math.abs(fy - ty) < 0.5) {
       // Horizontal
       const dir = tx >= fx ? 1 : -1;
       d.line(fx, fy, tx - dir * head, ty);
       fill(d, C.gray2);
       d.triangle(tx, ty,
-                 tx - dir * head, ty - head * 0.6,
-                 tx - dir * head, ty + head * 0.6, "F");
+        tx - dir * head, ty - head * 0.6,
+        tx - dir * head, ty + head * 0.6, "F");
     } else if (Math.abs(fx - tx) < 0.5) {
       // Vertical
       const dir = ty >= fy ? 1 : -1;
       d.line(fx, fy, tx, ty - dir * head);
       fill(d, C.gray2);
       d.triangle(tx, ty,
-                 tx - head * 0.6, ty - dir * head,
-                 tx + head * 0.6, ty - dir * head, "F");
+        tx - head * 0.6, ty - dir * head,
+        tx + head * 0.6, ty - dir * head, "F");
     } else {
       // L-shape via midX
       const midX = (fx + tx) / 2;
@@ -471,8 +482,8 @@ function drawSwimlaneWorkflowPage(d, flowData) {
       d.line(midX, ty, tx - dir * head, ty);
       fill(d, C.gray2);
       d.triangle(tx, ty,
-                 tx - dir * head, ty - head * 0.6,
-                 tx - dir * head, ty + head * 0.6, "F");
+        tx - dir * head, ty - head * 0.6,
+        tx - dir * head, ty + head * 0.6, "F");
     }
   });
 
@@ -484,16 +495,16 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   // The workflowRenderer assigns per-lane-colored strokes, but the UI uses a
   // single rose-pink palette for ALL process nodes (lane identity is shown
   // via the lane row background, not the node). We override here.
-  const PROCESS_FILL   = "#FEF2F2"; // rose-50
+  const PROCESS_FILL = "#FEF2F2"; // rose-50
   const PROCESS_STRIPE = "#EF4444"; // red-500
   const PROCESS_STROKE = "#FCA5A5"; // red-300
-  const PROCESS_TEXT   = "#1F2937"; // gray-800
-  const START_FILL     = "#D1FAE5";
-  const START_STROKE   = "#6EE7B7";
-  const START_TEXT     = "#047857";
-  const DECISION_FILL   = "#E0E7FF";
+  const PROCESS_TEXT = "#1F2937"; // gray-800
+  const START_FILL = "#D1FAE5";
+  const START_STROKE = "#6EE7B7";
+  const START_TEXT = "#047857";
+  const DECISION_FILL = "#E0E7FF";
   const DECISION_STROKE = "#A5B4FC";
-  const DECISION_TEXT   = "#3730A3";
+  const DECISION_TEXT = "#3730A3";
 
   // Nodes (on top of edges)
   layout.nodes.forEach(n => {
@@ -518,15 +529,15 @@ function drawSwimlaneWorkflowPage(d, flowData) {
       const lineH = fontPt * 0.42;
       lines.slice(0, 2).forEach((ln, li) => {
         text(d, ln, cx,
-             cy - (lines.length - 1) * lineH / 2 + (li + 0.4) * lineH,
-             { align: "center" });
+          cy - (lines.length - 1) * lineH / 2 + (li + 0.4) * lineH,
+          { align: "center" });
       });
     } else {
       const isStartEnd = n.type === "start" || n.type === "end";
-      const bodyFill   = isStartEnd ? hexToRgb(START_FILL)   : hexToRgb(PROCESS_FILL);
+      const bodyFill = isStartEnd ? hexToRgb(START_FILL) : hexToRgb(PROCESS_FILL);
       const bodyStroke = isStartEnd ? hexToRgb(START_STROKE) : hexToRgb(PROCESS_STROKE);
-      const bodyText   = isStartEnd ? hexToRgb(START_TEXT)   : hexToRgb(PROCESS_TEXT);
-      const radius     = isStartEnd ? nh / 2 : 1.8;
+      const bodyText = isStartEnd ? hexToRgb(START_TEXT) : hexToRgb(PROCESS_TEXT);
+      const radius = isStartEnd ? nh / 2 : 1.8;
 
       fill(d, bodyFill);
       d.roundedRect(nx, ny, nw, nh, radius, radius, "F");
@@ -541,11 +552,11 @@ function drawSwimlaneWorkflowPage(d, flowData) {
       ink(d, bodyText);
       const innerPad = (isStartEnd ? 2 : stripeW + 1.5);
       const wrapWidth = nw - innerPad - 2;
-      let lines = d.splitTextToSize(n.label, wrapWidth);
+      let lines = isStartEnd ? [n.label] : d.splitTextToSize(n.label, wrapWidth);
       // If too many lines, try a smaller font once
       let effectiveFont = fontPt;
       const maxLinesInBox = Math.max(2, Math.floor((nh - 2) / (fontPt * 0.42)));
-      if (lines.length > maxLinesInBox && fontPt > 5.5) {
+      if (!isStartEnd && lines.length > maxLinesInBox && fontPt > 5.5) {
         effectiveFont = Math.max(5.5, fontPt - 1);
         setFont(d, "bold", effectiveFont);
         lines = d.splitTextToSize(n.label, wrapWidth);
@@ -559,8 +570,8 @@ function drawSwimlaneWorkflowPage(d, flowData) {
         : nx + stripeW + (nw - stripeW) / 2;
       shown.forEach((ln, li) => {
         text(d, ln, textCenterX,
-             ny + nh / 2 - totalH / 2 + (li + 0.7) * lineH,
-             { align: "center" });
+          ny + nh / 2 - totalH / 2 + (li + 0.7) * lineH,
+          { align: "center" });
       });
     }
   });
@@ -635,7 +646,7 @@ function renderPrinciples(d, y, principles) {
     ink(d, C.navy);
     text(d, p.name || "", ML + 15, y + 8.5);
     drawWrap(d, p.application || "", ML + 5, y + 14, CW - 10,
-             { size: 8.5, color: C.gray1, lineH: 4.2 });
+      { size: 8.5, color: C.gray1, lineH: 4.2 });
     y += cardH + 4;
   });
   return y;
@@ -651,7 +662,7 @@ function renderCategories(d, y, categories) {
     ink(d, C.accent);
     text(d, cat.type || "", ML + 5, y + 7);
     drawWrap(d, cat.description || "", ML + 5, y + 12, CW - 10,
-             { size: 9, color: C.gray1, lineH: 4.5 });
+      { size: 9, color: C.gray1, lineH: 4.5 });
     y += cardH + 4;
   });
   return y;
@@ -678,7 +689,7 @@ function renderArchitectureLayers(d, y, layers) {
       ink(d, C.navy);
       text(d, comp.component_name || comp.name || "", ML + 5, y + 6);
       if (respText) drawWrap(d, respText, ML + 5, y + 10.5, CW - 10,
-                             { size: 8, color: C.gray1, lineH: 4 });
+        { size: 8, color: C.gray1, lineH: 4 });
       y += cardH + 3;
     });
 
@@ -748,11 +759,11 @@ function renderArchitectureLayers(d, y, layers) {
 
 function renderFrameworks(d, y, fw) {
   const groups = [
-    ["Orchestration",    fw.orchestration],
-    ["RAG Frameworks",   fw.rag_frameworks],
-    ["Guardrails",       fw.guardrails],
+    ["Orchestration", fw.orchestration],
+    ["RAG Frameworks", fw.rag_frameworks],
+    ["Guardrails", fw.guardrails],
     ["Evaluation Tools", fw.evaluation_tools],
-    ["Protocols",        fw.protocols],
+    ["Protocols", fw.protocols],
   ];
   groups.forEach(([label, items]) => {
     if (!items?.length) return;
@@ -814,10 +825,10 @@ function renderTools(d, y, tools) {
 function renderGuardrails(d, y, rails) {
   const railColor = rt => {
     const s = (rt || "").toLowerCase();
-    if (s.includes("input"))     return C.blue;
-    if (s.includes("output"))    return C.red;
+    if (s.includes("input")) return C.blue;
+    if (s.includes("output")) return C.red;
     if (s.includes("execution")) return C.amber;
-    if (s.includes("dialog"))    return C.violet;
+    if (s.includes("dialog")) return C.violet;
     return C.accent;
   };
   rails.forEach(r => {
@@ -905,9 +916,9 @@ function renderMetrics(d, y, metrics) {
   const mw = (CW - gap) / cols;
 
   for (let i = 0; i < metrics.length; i += cols) {
-    const left  = metrics[i];
+    const left = metrics[i];
     const right = metrics[i + 1];
-    const leftTargetLines  = d.splitTextToSize(left?.target  || "—", mw - 10).length;
+    const leftTargetLines = d.splitTextToSize(left?.target || "—", mw - 10).length;
     const rightTargetLines = right ? d.splitTextToSize(right.target || "—", mw - 10).length : 0;
     const lines = Math.max(leftTargetLines, rightTargetLines, 1);
     const rowH = 14 + lines * 5.5;
@@ -924,7 +935,7 @@ function renderMetrics(d, y, metrics) {
       const targetLines = d.splitTextToSize(data.target || "—", mw - 10);
       targetLines.forEach((ln, li) => text(d, ln, x + 5, y + 14 + li * 5.5));
     };
-    drawC(left,  ML);
+    drawC(left, ML);
     drawC(right, ML + mw + gap);
     y += rowH + gap;
   }
@@ -973,13 +984,13 @@ function drawSection(d, section, secIndex) {
       y = subTitle(d, y, sub.section_number, sub.title);
       if (sub.principles) y = renderPrinciples(d, y, sub.principles);
       if (sub.categories) y = renderCategories(d, y, sub.categories);
-      if (sub.content)    y = renderContentObject(d, y, sub.content);
+      if (sub.content) y = renderContentObject(d, y, sub.content);
     });
   }
   if (section.architecture_layers) y = renderArchitectureLayers(d, y, section.architecture_layers);
-  if (section.frameworks)          y = renderFrameworks(d, y, section.frameworks);
-  if (section.tools)               y = renderTools(d, y, section.tools);
-  if (section.guardrails)          y = renderGuardrails(d, y, section.guardrails);
+  if (section.frameworks) y = renderFrameworks(d, y, section.frameworks);
+  if (section.tools) y = renderTools(d, y, section.tools);
+  if (section.guardrails) y = renderGuardrails(d, y, section.guardrails);
   if (section.memory_architecture) {
     y = renderMemory(d, y, section.memory_architecture);
     if (section.critical_practices?.length) {
@@ -997,9 +1008,9 @@ function drawSection(d, section, secIndex) {
       });
     }
   }
-  if (section.stack)            y = renderTechStack(d, y, section.stack);
-  if (section.metrics)          y = renderMetrics(d, y, section.metrics);
-  if (section.workflows)        y = renderWorkflows(d, y, section.workflows);
+  if (section.stack) y = renderTechStack(d, y, section.stack);
+  if (section.metrics) y = renderMetrics(d, y, section.metrics);
+  if (section.workflows) y = renderWorkflows(d, y, section.workflows);
   if (section.report_structure) y = renderReportStructure(d, y, section.report_structure);
   if (section.content && typeof section.content === "object" && !Array.isArray(section.content)) {
     y = renderContentObject(d, y, section.content);

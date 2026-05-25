@@ -16,15 +16,15 @@ import { layoutWorkflow, hasFlowData, LANE_ACCENTS } from "./workflowRenderer";
 
 // ─── Colours (no '#' for docx) ───────────────────────────────────────────────
 const HEX = {
-  paper:     "FFFFFF",
-  ink:       "0F172A",
-  inkSoft:   "475569",
-  inkMuted:  "94A3B8",
-  rule:      "E2E8F0",
-  surface:   "F8FAFC",
-  brand:     "10B981",
-  brandDk:   "059669",
-  navy:      "1E293B",
+  paper: "FFFFFF",
+  ink: "0F172A",
+  inkSoft: "475569",
+  inkMuted: "94A3B8",
+  rule: "E2E8F0",
+  surface: "F8FAFC",
+  brand: "10B981",
+  brandDk: "059669",
+  navy: "1E293B",
 };
 
 const stripHash = (h) => (h || "").replace("#", "").toUpperCase();
@@ -41,11 +41,11 @@ function p(runs, opts = {}) {
 }
 
 function run(text, opts = {}) { return new TextRun({ text: String(text ?? ""), ...opts }); }
-function h1(text)  { return p(run(text, { bold: true, color: HEX.ink,    size: 32 }), { spacing: { before: 200, after: 120 } }); }
-function h2(text)  { return p(run(text, { bold: true, color: HEX.brandDk, size: 26 }), { spacing: { before: 200, after: 100 } }); }
-function h3(text)  { return p(run(text, { bold: true, color: HEX.ink,    size: 22 }), { spacing: { before: 160, after: 60  } }); }
-function body(text, opts = {})  { return p(run(text, { color: HEX.ink, size: 20, ...opts }), { spacing: { before: 40, after: 40 } }); }
-function muted(text){ return p(run(text, { color: HEX.inkSoft, size: 19 }), { spacing: { before: 30, after: 30 } }); }
+function h1(text) { return p(run(text, { bold: true, color: HEX.ink, size: 32 }), { spacing: { before: 200, after: 120 } }); }
+function h2(text) { return p(run(text, { bold: true, color: HEX.brandDk, size: 26 }), { spacing: { before: 200, after: 100 } }); }
+function h3(text) { return p(run(text, { bold: true, color: HEX.ink, size: 22 }), { spacing: { before: 160, after: 60 } }); }
+function body(text, opts = {}) { return p(run(text, { color: HEX.ink, size: 20, ...opts }), { spacing: { before: 40, after: 40 } }); }
+function muted(text) { return p(run(text, { color: HEX.inkSoft, size: 19 }), { spacing: { before: 30, after: 30 } }); }
 function bullet(text, level = 0) {
   return new Paragraph({
     children: [run(text, { color: HEX.ink, size: 20 })],
@@ -65,10 +65,10 @@ function spacer(size = 200) { return new Paragraph({ children: [], spacing: { be
 // ─── Table factory ───────────────────────────────────────────────────────────
 
 const borders = (color = HEX.rule, size = 2) => ({
-  top:    { style: BorderStyle.SINGLE, size, color },
+  top: { style: BorderStyle.SINGLE, size, color },
   bottom: { style: BorderStyle.SINGLE, size, color },
-  left:   { style: BorderStyle.SINGLE, size, color },
-  right:  { style: BorderStyle.SINGLE, size, color },
+  left: { style: BorderStyle.SINGLE, size, color },
+  right: { style: BorderStyle.SINGLE, size, color },
 });
 
 const tableBorders = (color = HEX.rule) => ({
@@ -281,7 +281,7 @@ function buildWorkflowSection(flowData) {
         }
         if (c.kind === "lane-label") {
           const accentBare = stripHash(c.lane.accent);
-          const tintBare   = stripHash(c.lane.tint);
+          const tintBare = stripHash(c.lane.tint);
           return new TableCell({
             children: [p(run(c.lane.label, { bold: true, color: stripHash(c.lane.text), size: 18 }))],
             shading: { type: ShadingType.SOLID, color: tintBare },
@@ -346,7 +346,7 @@ function buildWorkflowSection(flowData) {
   const flowItems = layout.edges
     .map((e) => {
       const fromNode = layout.nodes.find((n) => n.id === e.fromId);
-      const toNode   = layout.nodes.find((n) => n.id === e.toId);
+      const toNode = layout.nodes.find((n) => n.id === e.toId);
       if (!fromNode || !toNode) return null;
       const lbl = e.label ? ` [${e.label}]` : "";
       return `${fromNode.label} → ${toNode.label}${lbl}`;
@@ -370,8 +370,8 @@ function buildWorkflowSection(flowData) {
 function renderExecutiveSummary(section) {
   const c = section.content || {};
   const items = [];
-  if (c.purpose)              { items.push(h3("Purpose")); items.push(body(c.purpose)); }
-  if (c.problem_statement)    { items.push(h3("Problem Statement")); items.push(body(c.problem_statement)); }
+  if (c.purpose) { items.push(h3("Purpose")); items.push(body(c.purpose)); }
+  if (c.problem_statement) { items.push(h3("Problem Statement")); items.push(body(c.problem_statement)); }
   if (c.design_philosophy?.statement) {
     items.push(h3("Design Philosophy"));
     items.push(body(c.design_philosophy.statement, { italics: true }));
@@ -429,11 +429,11 @@ function renderArchitectureLayer(layer) {
 function renderFrameworks(fw) {
   const items = [];
   const groups = [
-    ["Orchestration",    fw.orchestration],
-    ["RAG Frameworks",   fw.rag_frameworks],
-    ["Guardrails",       fw.guardrails],
+    ["Orchestration", fw.orchestration],
+    ["RAG Frameworks", fw.rag_frameworks],
+    ["Guardrails", fw.guardrails],
     ["Evaluation Tools", fw.evaluation_tools],
-    ["Protocols",        fw.protocols],
+    ["Protocols", fw.protocols],
   ];
   groups.forEach(([label, list]) => {
     if (!Array.isArray(list) || !list.length) return;
@@ -559,15 +559,15 @@ function renderSection(section, index) {
   ];
 
   if (section.architecture_layers) { section.architecture_layers.forEach((l) => items.push(...renderArchitectureLayer(l))); items.push(pageBreak()); return items; }
-  if (section.subsections)         { items.push(...renderSubsections(section.subsections)); items.push(pageBreak()); return items; }
-  if (section.frameworks)          { items.push(...renderFrameworks(section.frameworks)); items.push(pageBreak()); return items; }
-  if (section.tools)               { items.push(...renderTools(section.tools)); items.push(pageBreak()); return items; }
-  if (section.guardrails)          { items.push(...renderGuardrails(section.guardrails, section.observability)); items.push(pageBreak()); return items; }
-  if (section.metrics)             { items.push(...renderMetrics(section.metrics)); items.push(pageBreak()); return items; }
+  if (section.subsections) { items.push(...renderSubsections(section.subsections)); items.push(pageBreak()); return items; }
+  if (section.frameworks) { items.push(...renderFrameworks(section.frameworks)); items.push(pageBreak()); return items; }
+  if (section.tools) { items.push(...renderTools(section.tools)); items.push(pageBreak()); return items; }
+  if (section.guardrails) { items.push(...renderGuardrails(section.guardrails, section.observability)); items.push(pageBreak()); return items; }
+  if (section.metrics) { items.push(...renderMetrics(section.metrics)); items.push(pageBreak()); return items; }
   if (section.memory_architecture) { items.push(...renderMemory(section.memory_architecture, section.critical_practices)); items.push(pageBreak()); return items; }
-  if (section.stack)               { items.push(...renderStack(section.stack)); items.push(pageBreak()); return items; }
-  if (section.workflows)           { items.push(...renderWorkflows(section.workflows)); items.push(pageBreak()); return items; }
-  if (section.report_structure)    { items.push(...renderReportStructure(section.report_structure)); items.push(pageBreak()); return items; }
+  if (section.stack) { items.push(...renderStack(section.stack)); items.push(pageBreak()); return items; }
+  if (section.workflows) { items.push(...renderWorkflows(section.workflows)); items.push(pageBreak()); return items; }
+  if (section.report_structure) { items.push(...renderReportStructure(section.report_structure)); items.push(pageBreak()); return items; }
 
   if (section.content) {
     if (section.section_number === 1 || /executive/i.test(section.title || "")) {

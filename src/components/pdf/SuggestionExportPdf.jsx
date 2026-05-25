@@ -82,15 +82,9 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
       }
 
       // ── Existing document export path ─────────────────────────────────
-      const analysisId =
-        processData?.process?._key ||
-        processData?.process?.id ||
-        suggestion?.analysisId ||
-        suggestionId;
-
       const [designRes, flowRes] = await Promise.allSettled([
         getTechnicalDesign(suggestionId),
-        getProcessFlow(analysisId),
+        getProcessFlow(suggestionId),
       ]);
 
       if (designRes.status !== "fulfilled") {
@@ -102,13 +96,13 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
         throw new Error("Invalid or empty technical-design payload.");
       }
 
-      // Prefer the workflow graph that the technical-design endpoint built
-      // (canonical, with Start/End nodes).  The backend may emit it under
-      // either key — accept both.  Fall back to the /flow endpoint last.
+      // Prioritize the live process flow data fetched from the suggestion
+      // endpoint (same as shown in the UI), falling back to the backend-built
+      // workflow graph or design-built one.
       const flow =
+        (flowRes.status === "fulfilled" ? unwrap(flowRes.value) : null) ||
         design?.workflow_graph ||
-        design?.agentic_workflow_graph ||
-        (flowRes.status === "fulfilled" ? unwrap(flowRes.value) : null);
+        design?.agentic_workflow_graph;
 
       if (flowRes.status !== "fulfilled") {
         console.warn("[ExportPdf] /flow fetch failed; using design.workflow_graph:", flowRes.reason);
