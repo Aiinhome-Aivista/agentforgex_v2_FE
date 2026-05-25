@@ -40,13 +40,13 @@ const INITIAL_MESSAGE = {
 
 const formatMessageText = (text) => {
   if (!text) return '';
-  
+
   // Split by lines
   const lines = text.split('\n');
-  
+
   return lines.map((line, index) => {
     let trimmedLine = line.trim();
-    
+
     // 1. Check for headings (e.g. ### Title or #### Title) and strip hashes
     const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
     let isHeading = false;
@@ -54,33 +54,33 @@ const formatMessageText = (text) => {
       isHeading = true;
       trimmedLine = headingMatch[2];
     }
-    
+
     // 2. Check for lists
     const isBullet = trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('✓') || trimmedLine.startsWith('* ');
     const isNumbered = /^\d+\.\s/.test(trimmedLine);
-    
+
     let content = isHeading ? trimmedLine : line;
     if (isBullet) {
       content = trimmedLine.replace(/^(•|-|✓|\*\s)\s*/, '');
     } else if (isNumbered) {
       content = trimmedLine.replace(/^\d+\.\s*/, '');
     }
-    
+
     // Parse **bold**, *italic*, and `code` inline
     const parts = [];
     const boldAndCodeRegex = /(\*\*.*?\*\*|`.*?`|\*.*?\*)/g;
     let match;
     let lastIndex = 0;
-    
+
     while ((match = boldAndCodeRegex.exec(content)) !== null) {
       const matchIndex = match.index;
       const matchedStr = match[0];
-      
+
       // Add preceding text
       if (matchIndex > lastIndex) {
         parts.push(content.substring(lastIndex, matchIndex));
       }
-      
+
       // Add formatted part (using inherited colors)
       if (matchedStr.startsWith('**') && matchedStr.endsWith('**')) {
         parts.push(<strong key={matchIndex} className="font-bold">{matchedStr.slice(2, -2)}</strong>);
@@ -89,16 +89,16 @@ const formatMessageText = (text) => {
       } else if (matchedStr.startsWith('`') && matchedStr.endsWith('`')) {
         parts.push(<code key={matchIndex} className="px-1.5 py-0.5 rounded bg-black/40 font-mono text-xs border border-white/5">{matchedStr.slice(1, -1)}</code>);
       }
-      
+
       lastIndex = boldAndCodeRegex.lastIndex;
     }
-    
+
     if (lastIndex < content.length) {
       parts.push(content.substring(lastIndex));
     }
-    
+
     const renderedContent = parts.length > 0 ? parts : content;
-    
+
     if (isHeading) {
       return (
         <p key={index} className="text-sm font-bold leading-relaxed mb-1.5">
@@ -106,7 +106,7 @@ const formatMessageText = (text) => {
         </p>
       );
     }
-    
+
     if (isBullet) {
       return (
         <li key={index} className="ml-4 list-disc text-sm leading-relaxed mb-1">
@@ -124,7 +124,7 @@ const formatMessageText = (text) => {
         </div>
       );
     }
-    
+
     return (
       <p key={index} className={trimmedLine === '' ? 'h-2' : 'text-sm leading-relaxed mb-1.5'}>
         {renderedContent}
@@ -222,23 +222,23 @@ export default function Chatbot() {
       const answer = data.answer ||
         "I couldn't process that — please try a different question.";
 
-      const offerReanalyze       = data.offer_reanalyze === true;
+      const offerReanalyze = data.offer_reanalyze === true;
       const awaitingConfirmation = data.awaiting_confirmation === true;
-      const capturedContext      = data.captured_context || null;
-      const confirmed            = data.confirmed;
+      const capturedContext = data.captured_context || null;
+      const confirmed = data.confirmed;
 
       // Build the new bot message
       const botMsgId = `b-${Date.now()}`;
       const newBotMessage = {
-        id:                   botMsgId,
-        text:                 answer,
-        isBot:                true,
-        inScope:              data.in_scope !== false,
-        intent:               data.intent || null,
+        id: botMsgId,
+        text: answer,
+        isBot: true,
+        inScope: data.in_scope !== false,
+        intent: data.intent || null,
         offerReanalyze,
         awaitingConfirmation,
-        capturedContext:      offerReanalyze ? capturedContext : null,
-        reanalyzeState:       offerReanalyze ? 'awaiting' : null,
+        capturedContext: offerReanalyze ? capturedContext : null,
+        reanalyzeState: offerReanalyze ? 'awaiting' : null,
       };
 
       setMessages((prev) => prev
@@ -309,9 +309,9 @@ export default function Chatbot() {
           text: ok
             ? `✓ Process map re-created with your new context.${revisionCount > 0 ? ` (${revisionCount} context update${revisionCount === 1 ? '' : 's'} applied.)` : ''}\n\nThe analysis page will refresh to show the updated steps, suggestions, and exports.`
             : `⚠ Re-analysis didn't complete cleanly: ${data.message || 'unknown error'}.`,
-          isBot:    true,
+          isBot: true,
           isSuccess: ok,
-          isError:  !ok,
+          isError: !ok,
         }));
 
       if (ok) {
@@ -416,15 +416,14 @@ export default function Chatbot() {
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.isBot ? 'items-start' : 'items-end'}`}>
               <div
-                className={`max-w-[85%] rounded-2xl p-3 text-sm whitespace-pre-wrap break-words ${
-                  msg.isBot
+                className={`max-w-[85%] rounded-2xl p-3 text-sm whitespace-pre-wrap break-words ${msg.isBot
                     ? msg.isError
                       ? 'bg-red-500/20 text-red-200 rounded-tl-none'
                       : msg.isSuccess
                         ? 'bg-emerald-500/15 text-emerald-100 rounded-tl-none border border-emerald-500/30'
                         : 'bg-[#27272A] text-gray-200 rounded-tl-none'
                     : 'bg-[#00FF9D] text-[#0A0A0B] font-medium rounded-tr-none'
-                }`}
+                  }`}
               >
                 {msg.isTyping ? (
                   <span className="inline-flex items-center gap-2 text-white/70">
@@ -469,9 +468,15 @@ export default function Chatbot() {
                 </div>
               )}
               {msg.offerReanalyze && msg.reanalyzeState === 'done' && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs border border-emerald-500/30">
-                  <CheckCircle2 size={13} />
-                  Process map re-created
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/15 text-sky-300 text-xs border border-sky-500/30">
+                    <CheckCircle2 size={13} />
+                    Yes selected for re-analysis
+                  </div>
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs border border-emerald-500/30">
+                    <CheckCircle2 size={13} />
+                    Process map re-created
+                  </div>
                 </div>
               )}
               {msg.offerReanalyze && msg.reanalyzeState === 'declined' && (

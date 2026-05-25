@@ -137,27 +137,22 @@ export const ensureStartEndNodes = (data) => {
   const idSet = new Set(allNodes.map((n) => n.id).filter(Boolean));
   const types = allNodes.map((n) => (n.type || "").toLowerCase());
   const hasStart = types.includes("start");
-  const hasEnd   = types.includes("end");
 
-  if (hasStart && hasEnd) return data;
+  if (hasStart) return data;
 
   // Compute column range
   const cols = allNodes
     .map((n) => n.column)
     .filter((c) => typeof c === "number");
   const minCol = cols.length ? Math.min(...cols) : 1;
-  const maxCol = cols.length ? Math.max(...cols) : 1;
 
-  // Identify entry / exit nodes by edge connectivity
+  // Identify entry nodes by edge connectivity
   const inbound  = new Map();
-  const outbound = new Map();
   for (const e of flow) {
     if (!e || !e.from || !e.to) continue;
-    inbound.set(e.to,    (inbound.get(e.to)    || 0) + 1);
-    outbound.set(e.from, (outbound.get(e.from) || 0) + 1);
+    inbound.set(e.to, (inbound.get(e.to) || 0) + 1);
   }
-  const entry = allNodes.find((n) => n.id && !inbound.get(n.id))  || allNodes[0];
-  const exit  = [...allNodes].reverse().find((n) => n.id && !outbound.get(n.id)) || allNodes[allNodes.length - 1];
+  const entry = allNodes.find((n) => n.id && !inbound.get(n.id)) || allNodes[0];
 
   // Helper — produce a non-colliding id
   const uniqueId = (base) => {
@@ -177,17 +172,6 @@ export const ensureStartEndNodes = (data) => {
       column: Math.max(0, minCol - 1),
     });
     flow.unshift({ from: startId, to: entry.id });
-  }
-
-  if (!hasEnd && exit) {
-    const endId = uniqueId("__end__");
-    lanes[lanes.length - 1].nodes.push({
-      id:     endId,
-      type:   "end",
-      label:  "End",
-      column: maxCol + 1,
-    });
-    flow.push({ from: exit.id, to: endId });
   }
 
   return { ...data, lanes, flow };

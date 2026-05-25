@@ -194,12 +194,12 @@ export default function SuggestionExportPdf({ suggestion, processData }) {
             "
             role="menu"
           >
-            <div className="p-2 flex flex-col gap-0.5">
+            <div className="p-1 flex flex-col gap-0.5 ">
               {FORMATS.map(({ id, label, Icon, iconCls, kind }) => (
                 <React.Fragment key={id}>
                   {/* Visual divider before the code option */}
                   {kind === "code" && (
-                    <div className="my-1 border-t border-white/10" />
+                    <div className="border-t border-white/10" />
                   )}
                   <button
                     onClick={() => handleDownload(id)}
