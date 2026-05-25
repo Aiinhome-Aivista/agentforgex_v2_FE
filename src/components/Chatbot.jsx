@@ -1,31 +1,29 @@
 /**
- * Chatbot.jsx — UPDATED (now with context-driven re-analysis)
+ * Chatbot.jsx — UPDATED for the Yes/No confirmation flow.
  *
- * Spec section 8 (existing):
- *  - Only answer AgentForgeX-related questions (backend enforces).
- *  - Out-of-scope queries get the canned out-of-scope message.
- *  - "Explain process" / "Show process steps" / "Automation details" answer
- *    dynamically from the current workflow data (handled by backend intents).
- *  - After sending a message the chat area auto-refreshes:
- *      • input clears
- *      • scrolls to the latest message
- *      • new bot message rendered as soon as it arrives
+ * Flow (matches the user's spec):
+ *  1. User sends a message.
+ *  2. If the bot detects context-provision keywords, it replies with the
+ *     CANONICAL prompt:
  *
- * NEW behaviour:
- *  - When the user provides ADDITIONAL CONTEXT about the process inside the
- *    chat (e.g. "actually we also need a fraud check before payment"), the
- *    bot reply will include `offer_reanalyze: true` and a `captured_context`
- *    string.  The chat then renders a "Re-analyze process" action button
- *    next to that bot message.
- *  - Clicking that button POSTs to /api/chatbot/reanalyze.  On success the
- *    bot replies with a confirmation message and fires a global
- *    `agentforgex:process-reanalyzed` window event so the parent page can
- *    refresh its data.
+ *       Do you want me to re-create the process map based on your
+ *       suggested context "..." ?
+ *       Please acknowledge ( Yes / No ) ?
+ *
+ *     The UI then shows:
+ *       • "Thinking…" placeholder bubble below it (while we wait for the
+ *         user to acknowledge).
+ *       • Two inline action buttons: [Yes] [No].
+ *  3. Clicking Yes → POSTs to /api/chatbot/reanalyze and shows a real
+ *     "Re-analyzing…" spinner.
+ *  4. Clicking No → bot acknowledges and drops the pending context.
+ *  5. The user can also TYPE "yes" / "no" — the backend interprets these
+ *     when `pending_context` is sent along.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  MessageCircle, X, Send, Loader2, RefreshCw, CheckCircle2,
+  MessageCircle, X, Send, Loader2, Check, XCircle, RefreshCw, CheckCircle2,
 } from 'lucide-react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -36,151 +34,104 @@ const INITIAL_MESSAGE = {
   text:
     "Hi! I'm AgentForgeX — I can answer questions about your current workflow, " +
     "process steps, and automation suggestions. You can also tell me additional " +
-    "context about the process and I'll offer to re-analyze it. Try \"Explain " +
-    "process\" or \"Show process steps\".",
+    "context about the process and I'll offer to re-create the process map.",
   isBot: true,
 };
 
-function renderFormattedText(text, isBot = true) {
-  if (!text) return null;
-
+const formatMessageText = (text) => {
+  if (!text) return '';
+  
+  // Split by lines
   const lines = text.split('\n');
-  const blocks = [];
-  let currentList = [];
-  let currentListType = null; // 'ul' or 'ol'
-
-  const flushList = () => {
-    if (currentList.length > 0) {
-      if (currentListType === 'ul') {
-        blocks.push(
-          <ul key={`ul-${blocks.length}`} className="list-disc pl-5 my-1.5 space-y-1">
-            {currentList}
-          </ul>
-        );
-      } else if (currentListType === 'ol') {
-        blocks.push(
-          <ol key={`ol-${blocks.length}`} className="list-decimal pl-5 my-1.5 space-y-1">
-            {currentList}
-          </ol>
-        );
-      }
-      currentList = [];
-      currentListType = null;
-    }
-  };
-
-  const parseInline = (str) => {
-    if (!str) return '';
-    const parts = [];
+  
+  return lines.map((line, index) => {
+    let trimmedLine = line.trim();
     
-    const regex = /(\*\*|__)(.*?)\1|(`)(.*?)\3|(\*)(.*?)\5/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(str)) !== null) {
-      const plainText = str.substring(lastIndex, match.index);
-      if (plainText) {
-        parts.push(plainText);
-      }
-
-      if (match[1]) {
-        parts.push(
-          <strong key={`b-${match.index}`} className={isBot ? "font-bold text-white" : "font-extrabold text-black"}>
-            {match[2]}
-          </strong>
-        );
-      } else if (match[3]) {
-        parts.push(
-          <code key={`c-${match.index}`} className={isBot ? "bg-black/40 px-1.5 py-0.5 rounded text-xs font-mono text-[#00FF9D]" : "bg-black/10 px-1.5 py-0.5 rounded text-xs font-mono text-black font-semibold"}>
-            {match[4]}
-          </code>
-        );
-      } else if (match[5]) {
-        parts.push(<em key={`i-${match.index}`} className="italic">{match[6]}</em>);
-      }
-
-      lastIndex = regex.lastIndex;
-    }
-
-    const remainingText = str.substring(lastIndex);
-    if (remainingText) {
-      parts.push(remainingText);
-    }
-
-    return parts.length > 0 ? parts : str;
-  };
-
-  for (let idx = 0; idx < lines.length; idx++) {
-    const line = lines[idx];
-    const trimmedLine = line.trim();
-
-    if (trimmedLine === '') {
-      flushList();
-      continue;
-    }
-
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    // 1. Check for headings (e.g. ### Title or #### Title) and strip hashes
+    const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+    let isHeading = false;
     if (headingMatch) {
-      flushList();
-      const level = headingMatch[1].length;
-      const headingText = headingMatch[2];
-      const parsedText = parseInline(headingText);
+      isHeading = true;
+      trimmedLine = headingMatch[2];
+    }
+    
+    // 2. Check for lists
+    const isBullet = trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('✓') || trimmedLine.startsWith('* ');
+    const isNumbered = /^\d+\.\s/.test(trimmedLine);
+    
+    let content = isHeading ? trimmedLine : line;
+    if (isBullet) {
+      content = trimmedLine.replace(/^(•|-|✓|\*\s)\s*/, '');
+    } else if (isNumbered) {
+      content = trimmedLine.replace(/^\d+\.\s*/, '');
+    }
+    
+    // Parse **bold**, *italic*, and `code` inline
+    const parts = [];
+    const boldAndCodeRegex = /(\*\*.*?\*\*|`.*?`|\*.*?\*)/g;
+    let match;
+    let lastIndex = 0;
+    
+    while ((match = boldAndCodeRegex.exec(content)) !== null) {
+      const matchIndex = match.index;
+      const matchedStr = match[0];
       
-      const headingCls = 
-        level === 1 ? 'text-lg font-extrabold text-white mt-3 mb-1.5' :
-        level === 2 ? 'text-base font-bold text-white mt-2.5 mb-1' :
-        level === 3 ? 'text-sm font-bold text-white mt-2 mb-0.5' :
-        'text-sm font-semibold text-white mt-1.5 mb-0.5';
-
-      const Tag = `h${level}`;
-      blocks.push(
-        React.createElement(Tag, { key: `h-${idx}`, className: headingCls }, parsedText)
-      );
-      continue;
-    }
-
-    const ulMatch = line.match(/^[-*]\s+(.*)$/);
-    if (ulMatch) {
-      if (currentListType !== 'ul') {
-        flushList();
-        currentListType = 'ul';
+      // Add preceding text
+      if (matchIndex > lastIndex) {
+        parts.push(content.substring(lastIndex, matchIndex));
       }
-      currentList.push(
-        <li key={`li-${idx}`} className={isBot ? "text-gray-300 text-sm" : "text-[#0A0A0B] text-sm font-medium"}>
-          {parseInline(ulMatch[1])}
+      
+      // Add formatted part (using inherited colors)
+      if (matchedStr.startsWith('**') && matchedStr.endsWith('**')) {
+        parts.push(<strong key={matchIndex} className="font-bold">{matchedStr.slice(2, -2)}</strong>);
+      } else if (matchedStr.startsWith('*') && matchedStr.endsWith('*')) {
+        parts.push(<em key={matchIndex} className="italic opacity-90">{matchedStr.slice(1, -1)}</em>);
+      } else if (matchedStr.startsWith('`') && matchedStr.endsWith('`')) {
+        parts.push(<code key={matchIndex} className="px-1.5 py-0.5 rounded bg-black/40 font-mono text-xs border border-white/5">{matchedStr.slice(1, -1)}</code>);
+      }
+      
+      lastIndex = boldAndCodeRegex.lastIndex;
+    }
+    
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+    
+    const renderedContent = parts.length > 0 ? parts : content;
+    
+    if (isHeading) {
+      return (
+        <p key={index} className="text-sm font-bold leading-relaxed mb-1.5">
+          {renderedContent}
+        </p>
+      );
+    }
+    
+    if (isBullet) {
+      return (
+        <li key={index} className="ml-4 list-disc text-sm leading-relaxed mb-1">
+          {renderedContent}
         </li>
       );
-      continue;
     }
-
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
-    if (olMatch) {
-      if (currentListType !== 'ol') {
-        flushList();
-        currentListType = 'ol';
-      }
-      currentList.push(
-        <li key={`li-${idx}`} className={isBot ? "text-gray-300 text-sm" : "text-[#0A0A0B] text-sm font-medium"}>
-          {parseInline(olMatch[2])}
-        </li>
+    if (isNumbered) {
+      const matchNum = trimmedLine.match(/^(\d+)\.\s/);
+      const num = matchNum ? matchNum[1] : '';
+      return (
+        <div key={index} className="flex gap-2 text-sm leading-relaxed mb-1 pl-1">
+          <span className="font-bold min-w-[15px]">{num}.</span>
+          <span className="flex-1">{renderedContent}</span>
+        </div>
       );
-      continue;
     }
-
-    flushList();
-
-    blocks.push(
-      <p key={`p-${idx}`} className={isBot ? "my-1 text-gray-300 leading-relaxed text-sm" : "my-1 text-[#0A0A0B] leading-relaxed text-sm font-medium"}>
-        {parseInline(line)}
+    
+    return (
+      <p key={index} className={trimmedLine === '' ? 'h-2' : 'text-sm leading-relaxed mb-1.5'}>
+        {renderedContent}
       </p>
     );
-  }
-
-  flushList();
-
-  return <div className="space-y-1">{blocks}</div>;
-}
-
+  });
+};
 
 export default function Chatbot() {
   const { isAuthenticated } = useAuth();
@@ -192,7 +143,11 @@ export default function Chatbot() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [isSending, setIsSending] = useState(false);
-  const [reanalyzingId, setReanalyzingId] = useState(null);
+
+  // Pending context awaiting Yes/No confirmation.  When set, the next
+  // user reply is interpreted in light of it (server-side).
+  const [pendingContext, setPendingContext] = useState(null);
+  const [pendingMessageId, setPendingMessageId] = useState(null);
 
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -210,17 +165,14 @@ export default function Chatbot() {
     location.pathname.includes('/workspaces/');
   const shouldShow = isAuthenticated && isVisiblePath;
 
+  // ─── lifecycle ────────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => setIsBouncing(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
 
-  // Auto-scroll after every messages change
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -228,7 +180,7 @@ export default function Chatbot() {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, [messages, isSending, reanalyzingId]);
+  }, [messages, isSending]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -239,44 +191,74 @@ export default function Chatbot() {
 
   const toggleChat = () => setIsOpen((v) => !v);
 
-  const handleSend = useCallback(async (e) => {
+  // ─── helper: append a bot message ─────────────────────────────────────
+  const appendBot = useCallback((extra) => {
+    const id = `b-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setMessages((prev) => [...prev, { id, isBot: true, ...extra }]);
+    return id;
+  }, []);
+
+  // ─── handler: send the message ────────────────────────────────────────
+  const handleSend = useCallback(async (e, overrideText) => {
     if (e && e.preventDefault) e.preventDefault();
-    const text = (message || '').trim();
+    const text = (overrideText ?? message ?? '').trim();
     if (!text || isSending) return;
 
+    // 1. Push user message
     const userMsg = { id: `u-${Date.now()}`, text, isBot: false };
     setMessages((prev) => [...prev, userMsg]);
-    setMessage('');
+    if (!overrideText) setMessage('');
     setIsSending(true);
 
+    // 2. Typing placeholder
     const typingId = `b-typing-${Date.now()}`;
     setMessages((prev) => [...prev, {
-      id: typingId, text: '…', isBot: true, isTyping: true,
+      id: typingId, text: 'Thinking…', isBot: true, isTyping: true,
     }]);
 
     try {
-      const resp = await sendChatMessage(text, processKey);
-      const answer = resp?.answer || resp?.data?.answer ||
-                     "I couldn't process that — please try a different question.";
+      const resp = await sendChatMessage(text, processKey, pendingContext);
+      const data = resp?.data ?? resp ?? {};
+      const answer = data.answer ||
+        "I couldn't process that — please try a different question.";
 
-      // Detect the context-provision offer
-      const offerReanalyze =
-        resp?.offer_reanalyze === true || resp?.data?.offer_reanalyze === true;
-      const capturedContext =
-        resp?.captured_context || resp?.data?.captured_context || text;
+      const offerReanalyze       = data.offer_reanalyze === true;
+      const awaitingConfirmation = data.awaiting_confirmation === true;
+      const capturedContext      = data.captured_context || null;
+      const confirmed            = data.confirmed;
+
+      // Build the new bot message
+      const botMsgId = `b-${Date.now()}`;
+      const newBotMessage = {
+        id:                   botMsgId,
+        text:                 answer,
+        isBot:                true,
+        inScope:              data.in_scope !== false,
+        intent:               data.intent || null,
+        offerReanalyze,
+        awaitingConfirmation,
+        capturedContext:      offerReanalyze ? capturedContext : null,
+        reanalyzeState:       offerReanalyze ? 'awaiting' : null,
+      };
 
       setMessages((prev) => prev
         .filter((m) => m.id !== typingId)
-        .concat({
-          id: `b-${Date.now()}`,
-          text: answer,
-          isBot: true,
-          inScope: resp?.in_scope !== false,
-          intent: resp?.intent || null,
-          offerReanalyze,
-          capturedContext: offerReanalyze ? capturedContext : null,
-          reanalyzeState: offerReanalyze ? 'offered' : null,
-        }));
+        .concat(newBotMessage));
+
+      // 3. Manage pending-context state
+      if (offerReanalyze && awaitingConfirmation && capturedContext) {
+        setPendingContext(capturedContext);
+        setPendingMessageId(botMsgId);
+      } else if (data.intent === 'confirm_reanalyze_yes' && confirmed) {
+        // User typed "yes" — trigger re-analysis NOW
+        const ctxToUse = data.captured_context || pendingContext;
+        setPendingContext(null);
+        setPendingMessageId(null);
+        if (ctxToUse) await runReanalysis(ctxToUse, pendingMessageId);
+      } else if (data.intent === 'confirm_reanalyze_no') {
+        setPendingContext(null);
+        setPendingMessageId(null);
+      }
     } catch (err) {
       setMessages((prev) => prev
         .filter((m) => m.id !== typingId)
@@ -289,92 +271,99 @@ export default function Chatbot() {
     } finally {
       setIsSending(false);
     }
-  }, [message, isSending, processKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message, isSending, processKey, pendingContext, pendingMessageId]);
 
-  // ── NEW: handle the "Re-analyze" action button ──────────────────────────
-  const handleReanalyze = useCallback(async (msg) => {
-    if (!processKey || !msg?.capturedContext) return;
-    setReanalyzingId(msg.id);
+  // ─── handler: actually run the re-analysis ────────────────────────────
+  const runReanalysis = useCallback(async (ctx, offerMsgId) => {
+    if (!processKey || !ctx) return;
 
-    // Update the offered message to show "in progress"
-    setMessages((prev) => prev.map((m) =>
-      m.id === msg.id ? { ...m, reanalyzeState: 'running' } : m,
-    ));
+    // Update the offer bubble to "running"
+    if (offerMsgId) {
+      setMessages((prev) => prev.map((m) =>
+        m.id === offerMsgId ? { ...m, reanalyzeState: 'running' } : m,
+      ));
+    }
 
-    // Add a transient bot message so the user sees progress in the thread
     const progressId = `b-reanalyzing-${Date.now()}`;
     setMessages((prev) => [...prev, {
       id: progressId,
-      text: 'Re-analyzing the process with the new context…',
+      text: 'Re-analyzing the process and re-creating the process map…',
       isBot: true,
       isTyping: true,
     }]);
 
     try {
-      const resp = await triggerReanalysis(processKey, msg.capturedContext);
-      const ok = resp?.status === true || resp?.data?.status === true;
-      const message =
-        resp?.message ||
-        resp?.data?.message ||
-        (ok
-          ? 'Process re-analyzed successfully.'
-          : 'Re-analysis did not complete cleanly — please refresh and try again.');
-      const revisionCount =
-        resp?.revision_count ?? resp?.data?.revision_count ?? 0;
+      const resp = await triggerReanalysis(processKey, ctx);
+      const data = resp?.data ?? resp ?? {};
+      const ok = data.status === true;
+      const revisionCount = data.revision_count ?? 0;
 
       setMessages((prev) => prev
         .filter((m) => m.id !== progressId)
-        .map((m) =>
-          m.id === msg.id
-            ? { ...m, reanalyzeState: ok ? 'done' : 'failed' }
-            : m,
-        )
+        .map((m) => (m.id === offerMsgId
+          ? { ...m, reanalyzeState: ok ? 'done' : 'failed' }
+          : m))
         .concat({
           id: `b-${Date.now()}`,
           text: ok
-            ? `✓ ${message} ${revisionCount > 0 ? `(${revisionCount} context update${revisionCount === 1 ? '' : 's'} applied.)` : ''}\n\nThe analysis page will refresh to show the updated steps, suggestions, and exports.`
-            : `⚠ ${message}`,
-          isBot: true,
+            ? `✓ Process map re-created with your new context.${revisionCount > 0 ? ` (${revisionCount} context update${revisionCount === 1 ? '' : 's'} applied.)` : ''}\n\nThe analysis page will refresh to show the updated steps, suggestions, and exports.`
+            : `⚠ Re-analysis didn't complete cleanly: ${data.message || 'unknown error'}.`,
+          isBot:    true,
           isSuccess: ok,
-          isError: !ok,
+          isError:  !ok,
         }));
 
       if (ok) {
-        // Fire a global event so the parent AnalysisPage can refetch.
         window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyzed', {
-          detail: { processKey, revisionCount, refreshedAt: Date.now() },
+          detail: { processKey, revisionCount, refreshedAt: Date.now(), data },
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyze-failed', {
+          detail: { processKey, message: data.message || 'unknown error', refreshedAt: Date.now() },
         }));
       }
     } catch (err) {
+      window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyze-failed', {
+        detail: { processKey, error: err.message, refreshedAt: Date.now() },
+      }));
+
       setMessages((prev) => prev
         .filter((m) => m.id !== progressId)
-        .map((m) =>
-          m.id === msg.id ? { ...m, reanalyzeState: 'failed' } : m,
-        )
+        .map((m) => (m.id === offerMsgId
+          ? { ...m, reanalyzeState: 'failed' }
+          : m))
         .concat({
           id: `b-err-${Date.now()}`,
           text: `Re-analysis failed: ${err.message || 'unknown error'}.`,
           isBot: true,
           isError: true,
         }));
-    } finally {
-      setReanalyzingId(null);
     }
   }, [processKey]);
 
-  // ── NEW: let the user decline the offered re-analysis cleanly ───────────
-  const handleDeclineReanalyze = useCallback((msg) => {
+  // ─── handlers: Yes / No button clicks ─────────────────────────────────
+  const handleYes = useCallback(async (msg) => {
+    const ctx = msg.capturedContext || pendingContext;
+    if (!ctx) return;
+    setPendingContext(null);
+    setPendingMessageId(null);
+    await runReanalysis(ctx, msg.id);
+  }, [pendingContext, runReanalysis]);
+
+  const handleNo = useCallback((msg) => {
+    setPendingContext(null);
+    setPendingMessageId(null);
     setMessages((prev) => prev.map((m) =>
       m.id === msg.id ? { ...m, reanalyzeState: 'declined' } : m,
     ).concat({
       id: `b-${Date.now()}`,
-      text:
-        "No problem — I've kept the context for later. You can ask me to re-analyze at any time " +
-        "by saying \"please re-analyze the process\".",
+      text: "Got it — I won't re-create the process map. Let me know if you change your mind.",
       isBot: true,
     }));
   }, []);
 
+  // ─── keyboard ─────────────────────────────────────────────────────────
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -386,10 +375,9 @@ export default function Chatbot() {
 
   return (
     <>
-      {isOpen && (
-        <div className="fixed inset-0 bg-transparent z-40" onClick={toggleChat} />
-      )}
 
+
+      {/* Floating Button */}
       <button
         onClick={toggleChat}
         className={`fixed bottom-6 right-6 p-4 rounded-full shadow-lg bg-[#00FF9D] text-[#0A0A0B] hover:bg-[#00e68d] transition-all duration-300 z-50 ${isOpen ? 'scale-0' : 'scale-100'} ${isBouncing && !isOpen ? 'animate-bounce' : ''}`}
@@ -398,9 +386,11 @@ export default function Chatbot() {
         <MessageCircle size={28} />
       </button>
 
+      {/* Chat Window */}
       <div
-        className={`fixed bottom-6 right-6 w-85 sm:w-[480px] h-[650px] max-h-[85vh] bg-[#121214] border border-[#27272A] rounded-2xl shadow-2xl flex flex-col z-50 transition-all duration-300 transform origin-[calc(100%-30px)_calc(100%-30px)] ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
+        className={`fixed bottom-6 right-6 w-[400px] sm:w-[480px] h-[600px] max-h-[80vh] bg-[#121214] border border-[#27272A] rounded-2xl shadow-2xl flex flex-col z-50 transition-all duration-300 transform origin-[calc(100%-30px)_calc(100%-30px)] ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
       >
+        {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-[#27272A] bg-[#1A1A1D] rounded-t-2xl">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-[#00FF9D] flex justify-center items-center">
@@ -409,7 +399,7 @@ export default function Chatbot() {
             <div className="flex flex-col">
               <h3 className="text-white font-semibold leading-tight">AgentForgeX Assistant</h3>
               <span className="text-[10px] text-white/40 uppercase tracking-wider">
-                Workflow & process Q&amp;A
+                Workflow &amp; Process Q&amp;A
               </span>
             </div>
           </div>
@@ -426,7 +416,7 @@ export default function Chatbot() {
           {messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.isBot ? 'items-start' : 'items-end'}`}>
               <div
-                className={`max-w-[85%] rounded-2xl p-3 text-sm break-words ${
+                className={`max-w-[85%] rounded-2xl p-3 text-sm whitespace-pre-wrap break-words ${
                   msg.isBot
                     ? msg.isError
                       ? 'bg-red-500/20 text-red-200 rounded-tl-none'
@@ -437,44 +427,51 @@ export default function Chatbot() {
                 }`}
               >
                 {msg.isTyping ? (
-                  <span className="inline-flex items-center gap-1 text-white/60">
-                    <Loader2 size={14} className="animate-spin" />
-                    {msg.text === '…' ? 'thinking…' : msg.text}
+                  <span className="inline-flex items-center gap-2 text-white/70">
+                    <Loader2 size={14} className="animate-spin text-[#00FF9D]" />
+                    {msg.text || 'Thinking…'}
                   </span>
                 ) : (
-                  renderFormattedText(msg.text, msg.isBot)
+                  formatMessageText(msg.text)
                 )}
               </div>
 
-              {/* Re-analyze action buttons */}
-              {msg.offerReanalyze && msg.reanalyzeState === 'offered' && (
-                <div className="mt-2 flex flex-wrap gap-2">
+              {/* ─── Yes/No confirmation buttons ──────────────────────── */}
+              {msg.offerReanalyze && msg.reanalyzeState === 'awaiting' && (
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
                   <button
-                    onClick={() => handleReanalyze(msg)}
-                    disabled={reanalyzingId === msg.id || !processKey}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00FF9D] text-[#0A0A0B] text-xs font-bold uppercase tracking-wider hover:bg-[#00e68d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleYes(msg)}
+                    disabled={!processKey || isSending}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#00FF9D] text-[#0A0A0B] text-xs font-bold uppercase tracking-wider hover:bg-[#00e68d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Re-create the process map"
                   >
-                    <RefreshCw size={13} />
-                    Re-analyze process
+                    <Check size={13} />
+                    Yes
                   </button>
                   <button
-                    onClick={() => handleDeclineReanalyze(msg)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#27272A] text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-[#3F3F46] transition-colors"
+                    onClick={() => handleNo(msg)}
+                    disabled={isSending}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#27272A] text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-[#3F3F46] transition-colors disabled:opacity-50"
+                    title="Don't re-create"
                   >
-                    Not now
+                    <XCircle size={13} />
+                    No
                   </button>
+                  <span className="text-[10px] text-white/40 ml-1">
+                    or type <span className="text-white/60">yes</span> / <span className="text-white/60">no</span>
+                  </span>
                 </div>
               )}
               {msg.offerReanalyze && msg.reanalyzeState === 'running' && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#27272A] text-white/60 text-xs">
-                  <Loader2 size={13} className="animate-spin" />
+                  <Loader2 size={13} className="animate-spin text-[#00FF9D]" />
                   Re-analyzing…
                 </div>
               )}
               {msg.offerReanalyze && msg.reanalyzeState === 'done' && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs border border-emerald-500/30">
                   <CheckCircle2 size={13} />
-                  Re-analyzed
+                  Process map re-created
                 </div>
               )}
               {msg.offerReanalyze && msg.reanalyzeState === 'declined' && (
@@ -482,28 +479,49 @@ export default function Chatbot() {
                   Declined
                 </div>
               )}
+              {msg.offerReanalyze && msg.reanalyzeState === 'failed' && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-300 text-xs border border-red-500/30">
+                  <XCircle size={13} />
+                  Re-analysis failed
+                </div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Pending-context banner */}
+        {pendingContext && (
+          <div className="px-4 py-2 bg-amber-500/10 border-t border-amber-500/30 text-[11px] text-amber-200/90 flex items-center gap-2">
+            <RefreshCw size={11} />
+            <span className="truncate">
+              Awaiting Yes/No on the suggested context update…
+            </span>
+          </div>
+        )}
+
         {/* Input Area */}
         <form onSubmit={handleSend} className="p-4 border-t border-[#27272A] bg-[#1A1A1D] rounded-b-2xl">
-          <div className="relative flex items-end">
+          <div className="relative">
             <textarea
               ref={inputRef}
+              rows={1}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={isSending ? 'Thinking…' : 'Ask, or add context about the process…'}
+              placeholder={
+                pendingContext
+                  ? 'Type yes or no — or use the buttons above'
+                  : (isSending ? 'Thinking…' : 'Ask, or add context about the process…')
+              }
               disabled={isSending}
-              rows={2}
-              className="w-full bg-[#0A0A0B] text-white border border-[#27272A] rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:border-[#00FF9D] transition-colors disabled:opacity-50 resize-none min-h-[52px] max-h-[120px] overflow-y-auto text-sm leading-relaxed"
+              className="w-full bg-[#0A0A0B] text-white border border-[#27272A] rounded-2xl pl-4 pr-12 py-2.5 focus:outline-none focus:border-[#00FF9D] transition-colors disabled:opacity-50 resize-none max-h-28 overflow-y-auto scrollbar-thin"
+              style={{ minHeight: '44px', verticalAlign: 'middle', lineHeight: '20px' }}
             />
             <button
               type="submit"
               disabled={!message.trim() || isSending}
-              className="absolute right-3 bottom-2.5 p-2 bg-[#00FF9D] text-[#0A0A0B] rounded-full hover:bg-[#00e68d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-2.5 bottom-2.5 p-2 bg-[#00FF9D] text-[#0A0A0B] rounded-full hover:bg-[#00e68d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSending
                 ? <Loader2 size={16} className="animate-spin" />

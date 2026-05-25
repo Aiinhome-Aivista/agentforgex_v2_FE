@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import ProcessHeader from '../components/analysis/ProcessHeader'
@@ -8,6 +8,21 @@ import AutomationTab from '../components/analysis/AutomationTab'
 import ExportPDF from '../components/pdf/ExportPdf'
 import SaveToWorkspaceButton from '../components/workspace/SaveToWorkspaceButton'
 import { getProcess } from '../services/api'
+import { useReanalyzeListener } from '../hooks/useReanalyzeListener'
+
+const findAnalysisData = (obj) => {
+  if (!obj || typeof obj !== 'object') return null
+  if (obj.steps && obj.process) return obj
+  if (obj.data) {
+    const res = findAnalysisData(obj.data)
+    if (res) return res
+  }
+  if (obj.process) {
+    const res = findAnalysisData(obj.process)
+    if (res) return res
+  }
+  return null
+}
 
 export default function AnalysisPage() {
   const { id } = useParams()
@@ -25,8 +40,45 @@ export default function AnalysisPage() {
   });
 
   const [loading, setLoading] = useState(!result)
+  const [isReanalyzing, setIsReanalyzing] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
+
+  const refetch = useCallback(async () => {
+    setIsReanalyzing(true)
+    try {
+      const data = await getProcess(id)
+      setResult(data)
+      localStorage.setItem(`analysis_${id}`, JSON.stringify(data))
+    } catch (err) {
+      console.error("[AnalysisPage] refetch failed:", err)
+      setError(err.message)
+    } finally {
+      setIsReanalyzing(false)
+    }
+  }, [id])
+
+  useReanalyzeListener(id, {
+    onReanalyzed: (detail) => {
+      console.log("[AnalysisPage] onReanalyzed detail:", detail)
+      // Start loader immediately AFTER re-analysis completes in chat section
+      setIsReanalyzing(true)
+      
+      // Load for 3.5 seconds in background, then show new response
+      setTimeout(() => {
+        const freshAnalysisData = findAnalysisData(detail)
+        console.log("[AnalysisPage] located freshAnalysisData:", freshAnalysisData)
+        if (freshAnalysisData) {
+          setResult(freshAnalysisData)
+          localStorage.setItem(`analysis_${id}`, JSON.stringify(freshAnalysisData))
+        }
+        setIsReanalyzing(false)
+      }, 3500)
+    },
+    onFailed: () => {
+      setIsReanalyzing(false)
+    }
+  })
 
   useEffect(() => {
     const loadFromStorage = () => {
@@ -126,6 +178,7 @@ export default function AnalysisPage() {
             topTargets={top_automation_targets}
             steps={steps}
             suggestions={suggestions}
+            isReanalyzing={isReanalyzing}
           />
         )}
         {activeTab === 'erp' && (

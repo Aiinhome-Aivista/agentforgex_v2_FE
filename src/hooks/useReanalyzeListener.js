@@ -29,30 +29,64 @@
 
 import { useEffect } from "react";
 
-const EVENT_NAME = "agentforgex:process-reanalyzed";
+const EVENT_SUCCESS = "agentforgex:process-reanalyzed";
+const EVENT_START = "agentforgex:process-reanalyzing";
+const EVENT_FAILED = "agentforgex:process-reanalyze-failed";
 
 /**
- * @param {string}   processKey   the key of the process the page is showing
- * @param {function} onReanalyzed callback invoked when a successful
- *                                re-analysis fires for THIS process.  Should
- *                                trigger a refetch.
+ * @param {string}                  processKey   the key of the process the page is showing
+ * @param {function|object}         callbacks    either a single callback function for success,
+ *                                               or an object with { onReanalyzed, onReanalyzing, onFailed }
  */
-export function useReanalyzeListener(processKey, onReanalyzed) {
+export function useReanalyzeListener(processKey, callbacks) {
   useEffect(() => {
-    if (!processKey || typeof onReanalyzed !== "function") return undefined;
+    if (!processKey || !callbacks) return undefined;
 
-    const handler = (e) => {
+    const onReanalyzed = typeof callbacks === "function" ? callbacks : callbacks.onReanalyzed;
+    const onReanalyzing = typeof callbacks === "object" ? callbacks.onReanalyzing : null;
+    const onFailed = typeof callbacks === "object" ? callbacks.onFailed : null;
+
+    const handleSuccess = (e) => {
       const evtKey = e?.detail?.processKey;
       if (!evtKey || evtKey === processKey) {
         try {
-          onReanalyzed(e?.detail || {});
+          onReanalyzed?.(e?.detail || {});
         } catch (err) {
-          console.warn("[useReanalyzeListener] callback threw:", err);
+          console.warn("[useReanalyzeListener] success callback threw:", err);
         }
       }
     };
 
-    window.addEventListener(EVENT_NAME, handler);
-    return () => window.removeEventListener(EVENT_NAME, handler);
-  }, [processKey, onReanalyzed]);
+    const handleStart = (e) => {
+      const evtKey = e?.detail?.processKey;
+      if (!evtKey || evtKey === processKey) {
+        try {
+          onReanalyzing?.(e?.detail || {});
+        } catch (err) {
+          console.warn("[useReanalyzeListener] start callback threw:", err);
+        }
+      }
+    };
+
+    const handleFailed = (e) => {
+      const evtKey = e?.detail?.processKey;
+      if (!evtKey || evtKey === processKey) {
+        try {
+          onFailed?.(e?.detail || {});
+        } catch (err) {
+          console.warn("[useReanalyzeListener] failed callback threw:", err);
+        }
+      }
+    };
+
+    window.addEventListener(EVENT_SUCCESS, handleSuccess);
+    window.addEventListener(EVENT_START, handleStart);
+    window.addEventListener(EVENT_FAILED, handleFailed);
+
+    return () => {
+      window.removeEventListener(EVENT_SUCCESS, handleSuccess);
+      window.removeEventListener(EVENT_START, handleStart);
+      window.removeEventListener(EVENT_FAILED, handleFailed);
+    };
+  }, [processKey, callbacks]);
 }

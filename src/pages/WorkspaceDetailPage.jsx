@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Loader2, Layers, Trash2, AlertCircle, Calendar,
@@ -9,6 +9,21 @@ import OverviewTab from '../components/analysis/OverviewTab'
 import ERPContextTab from '../components/analysis/ERPContextTab'
 import AutomationTab from '../components/analysis/AutomationTab'
 import ExportPDF from '../components/pdf/ExportPdf'
+import { useReanalyzeListener } from '../hooks/useReanalyzeListener'
+
+const findAnalysisData = (obj) => {
+  if (!obj || typeof obj !== 'object') return null
+  if (obj.steps && obj.process) return obj
+  if (obj.data) {
+    const res = findAnalysisData(obj.data)
+    if (res) return res
+  }
+  if (obj.process) {
+    const res = findAnalysisData(obj.process)
+    if (res) return res
+  }
+  return null
+}
 
 export default function WorkspaceDetailPage() {
   const { id } = useParams()
@@ -16,10 +31,59 @@ export default function WorkspaceDetailPage() {
 
   const [ws, setWs] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isReanalyzing, setIsReanalyzing] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const refetch = useCallback(async () => {
+    setIsReanalyzing(true)
+    try {
+      const r = await getWorkspace(id)
+      if (r?.status) {
+        setWs(r.data)
+        if (r.data?.analysis_data) {
+          localStorage.setItem(`analysis_${id}`, JSON.stringify(r.data.analysis_data))
+        }
+      } else {
+        setError(r?.message || 'Workspace not found')
+      }
+    } catch (e) {
+      console.error("[WorkspaceDetailPage] refetch failed:", e)
+      setError(e?.message || 'Could not load workspace')
+    } finally {
+      setIsReanalyzing(false)
+    }
+  }, [id])
+
+  useReanalyzeListener(id, {
+    onReanalyzed: (detail) => {
+      console.log("[WorkspaceDetailPage] onReanalyzed detail:", detail)
+      // Start loader immediately AFTER re-analysis completes in chat section
+      setIsReanalyzing(true)
+      
+      // Load for 3.5 seconds in background, then show new response
+      setTimeout(() => {
+        const freshAnalysisData = findAnalysisData(detail)
+        console.log("[WorkspaceDetailPage] located freshAnalysisData:", freshAnalysisData)
+        if (freshAnalysisData) {
+          setWs((prev) => {
+            if (!prev) return null
+            return {
+              ...prev,
+              analysis_data: freshAnalysisData,
+            }
+          })
+          localStorage.setItem(`analysis_${id}`, JSON.stringify(freshAnalysisData))
+        }
+        setIsReanalyzing(false)
+      }, 3500)
+    },
+    onFailed: () => {
+      setIsReanalyzing(false)
+    }
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -200,6 +264,7 @@ export default function WorkspaceDetailPage() {
                 topTargets={top_automation_targets}
                 steps={steps}
                 suggestions={suggestions}
+                isReanalyzing={isReanalyzing}
               />
             )}
             {activeTab === 'erp' && (

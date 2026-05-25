@@ -56,8 +56,8 @@ export default function StepCard({ step, index, isLast, isSelected, onClick }) {
   const potentialColors = getPotentialColor(step.automation_potential);
 
   // Highlighting specific types and actors with potential-based colors as requested
-  const isAgenticOrHuman = ['higher agentic intervention', 'higher human intervention'].includes(step.step_type?.toLowerCase());
-  const isFinanceActor = step.actor?.toLowerCase().includes('finance') || step.actor?.toLowerCase().includes('manager');
+  const isAgenticOrHuman = step.step_type ? ['higher agentic intervention', 'higher human intervention'].includes(step.step_type.toLowerCase()) : false;
+  const isFinanceActor = step.actor ? (step.actor.toLowerCase().includes('finance') || step.actor.toLowerCase().includes('manager')) : false;
 
   const isBlocked = step.automation_potential === 0;
   const typeColor = (isAgenticOrHuman || isFinanceActor)

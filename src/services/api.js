@@ -76,8 +76,11 @@ export const loginUser = (email, password) => api.post('/login', { email, passwo
  * On out-of-scope queries, the backend returns the canonical out-of-scope
  * message but still status:true so the UI just renders it as a bot reply.
  */
-export const sendChatMessage = (query, processKey = null) =>
-  api.post('/chatbot/ask', { query, process_key: processKey })
+export const sendChatMessage = (query, processKey = null, pendingContext = null) => {
+  const body = { query, process_key: processKey }
+  if (pendingContext) body.pending_context = pendingContext
+  return api.post('/chatbot/ask', body)
+}
 
 /**
  * NEW: Download the auto-generated source code ZIP for a suggestion.

@@ -56,7 +56,7 @@ function TopTarget({ item, rank }) {
   )
 }
 
-export default function OverviewTab({ insights, topTargets, steps, suggestions }) {
+export default function OverviewTab({ insights, topTargets, steps, suggestions, isReanalyzing = false }) {
   const isPdf = usePDF()
   const scrollRef = useRef()
   const detailRef = useRef(null)
@@ -64,6 +64,8 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions }
   const [displayStep, setDisplayStep] = useState(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const activeLoading = isRefreshing || isReanalyzing
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -222,7 +224,7 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions }
                 <h2 className="text-base font-semibold text-white/90">Process Mapping</h2>
                 <button
                   onClick={handleRefresh}
-                  disabled={isRefreshing}
+                  disabled={activeLoading}
                   className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 
                       transition-all duration-200 group flex items-center gap-2"
                   title="Refresh process mapping"
@@ -231,7 +233,7 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions }
                     size={14}
                     className={clsx(
                       "text-white/40 group-hover:text-white/80 transition-all",
-                      isRefreshing && "animate-spin"
+                      activeLoading && "animate-spin"
                     )}
                   />
                   {/* {isRefreshing && (
@@ -243,7 +245,7 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions }
               </div>
 
               <div className="relative min-h-[400px]">
-                {isRefreshing && (
+                {activeLoading && (
                   <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/10 backdrop-blur-md rounded-2xl animate-fade-in border border-white/5">
                     <div className="flex flex-col items-center gap-3">
                       <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
@@ -252,7 +254,7 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions }
                   </div>
                 )}
 
-                <div className={clsx("flex flex-col gap-y-10 mt-8", isRefreshing && " bg-black/20 opacity-25 backdrop-blur-md transition-all duration-500")}>
+                <div className={clsx("flex flex-col gap-y-10 mt-8", activeLoading && " bg-black/20 opacity-25 backdrop-blur-md transition-all duration-500")}>
                 {(() => {
                   const chunkedSteps = [];
                   for (let i = 0; i < steps.length; i += 4) {
