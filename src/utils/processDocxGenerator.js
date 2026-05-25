@@ -12,7 +12,6 @@ import {
   AlignmentType, BorderStyle, WidthType, PageBreak, Footer, PageOrientation,
   HeadingLevel,
 } from "docx";
-import { getProcessFlow } from "../services/api";
 import {
   buildInventoryBlocks,
   buildCsvSourceBlocks,
@@ -296,79 +295,7 @@ function buildDataLineage(data) {
   ];
 }
 
-/* ─── §6 Agentic Workflow (rendered as a swimlane table) ─────────── */
-function buildAgenticWorkflow(flow) {
-  const out = [
-    h1("§6 — Agentic Workflow"),
-    body("The workflow below mirrors the in-app swimlane diagram, with Start and End nodes guaranteed for every flow."),
-  ];
 
-  if (!flow || !flow.lanes || flow.lanes.length === 0) {
-    out.push(muted("Workflow graph could not be fetched at export time."));
-    out.push(pageBreak());
-    return out;
-  }
-
-  // Collect global columns sorted
-  const colSet = new Set();
-  flow.lanes.forEach((l) => (l.nodes || []).forEach((n) => colSet.add(n.column ?? 1)));
-  const cols = Array.from(colSet).sort((a, b) => a - b);
-  const colIndex = new Map();
-  cols.forEach((c, i) => colIndex.set(c, i));
-  const nCols = cols.length || 1;
-
-  // Header row
-  const headerCells = [headerCell("Lane", HEX.navy)];
-  for (let i = 0; i < nCols; i++) headerCells.push(headerCell(`Step ${i + 1}`, HEX.brandDk));
-
-  const rows = [new TableRow({ tableHeader: true, children: headerCells })];
-
-  const LANE_TINTS = ["EFF6FF", "F5F3FF", "ECFDF5", "FFFBEB", "FFF1F2", "ECFEFF", "EEF2FF"];
-  const LANE_INKS  = ["1D4ED8", "6D28D9", "047857", "B45309", "BE123C", "0E7490", "4338CA"];
-
-  flow.lanes.forEach((lane, li) => {
-    const tint = LANE_TINTS[li % LANE_TINTS.length];
-    const accent = LANE_INKS[li % LANE_INKS.length];
-    const cells = [bodyCell(lane.label || `Lane ${li + 1}`, { bg: tint, bold: true, color: accent })];
-    // Index node by column
-    const byCol = new Map();
-    (lane.nodes || []).forEach((n) => byCol.set(n.column ?? 1, n));
-    cols.forEach((c) => {
-      const n = byCol.get(c);
-      if (!n) {
-        cells.push(bodyCell(""));
-      } else {
-        const t = (n.type || "process").toLowerCase();
-        if (t === "start" || t === "end") {
-          cells.push(bodyCell(`★ ${n.label || (t === "start" ? "Start" : "End")}`,
-                              { bg: "D1FAE5", bold: true, color: "047857" }));
-        } else if (t === "decision") {
-          cells.push(bodyCell(`◆ ${n.label || ""}`,
-                              { bg: "E0E7FF", bold: true, color: "3730A3" }));
-        } else {
-          cells.push(bodyCell(n.label || "", { bg: tint, color: accent }));
-        }
-      }
-    });
-    rows.push(new TableRow({ children: cells }));
-  });
-
-  out.push(new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: tableBorders(),
-    rows,
-  }));
-
-  // Flow edges as appendix
-  if (flow.flow?.length) {
-    out.push(h3("Flow Connections"));
-    flow.flow.forEach((e) =>
-      out.push(bullet(`${e.from}  →  ${e.to}${e.label ? `  (${e.label})` : ''}`)),
-    );
-  }
-  out.push(pageBreak());
-  return out;
-}
 
 /* ─── §7 Architecture & BOM ──────────────────────────────────────── */
 function buildArchitectureBom(data) {
@@ -555,15 +482,6 @@ export async function generateProcessDOCX(data) {
     throw new Error("generateProcessDOCX: invalid data payload");
   }
 
-  // Fetch workflow lazily; tolerate failure
-  let flowData = null;
-  try {
-    const flow = await getProcessFlow(data.process._key || data.process.id);
-    flowData = (flow && flow.data) || flow;
-  } catch (e) {
-    console.warn("[processDocxGenerator] workflow fetch failed:", e);
-  }
-
   const footer = new Footer({
     children: [
       p(r("AgentForgeX  |  Confidential – AI-Generated Process Analysis Blueprint",
@@ -580,7 +498,6 @@ export async function generateProcessDOCX(data) {
     ...buildFutureState(),
     ...buildCsvDetection(data),
     ...buildDataLineage(data),
-    ...buildAgenticWorkflow(flowData),
     ...buildArchitectureBom(data),
     ...buildOperatingGovernance(),
     ...buildDeploymentPlan(),

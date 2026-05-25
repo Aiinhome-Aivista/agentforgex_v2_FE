@@ -35,13 +35,12 @@
  */
 
 import jsPDF from "jspdf";
-import { getProcessFlow } from "../services/api";
 import {
   buildInventoryBlocks,
   buildCsvSourceBlocks,
   buildDataLineageBlocks,
 } from "./exportSectionsAddon";
-import { renderBlocks, renderWorkflowOnNewLandscapePage, DEFAULT_PALETTE }
+import { renderBlocks, DEFAULT_PALETTE }
   from "./pdfBlockRenderer";
 
 /* ─── Palette ─────────────────────────────────────────────────────────── */
@@ -863,24 +862,6 @@ export async function generateProcessPDF(data) {
 
   // §5 Document Data Lineage
   drawDataLineage(d, data);
-
-  // §6 Agentic Workflow Graph (with Start/End) — fetched lazily
-  try {
-    const flow = await getProcessFlow(data.process._key || data.process.id);
-    const flowData = (flow && flow.data) || flow;
-    if (flowData && flowData.lanes) {
-      renderWorkflowOnNewLandscapePage(d, { title: data.process.title, ...flowData }, C);
-    }
-  } catch (e) {
-    console.warn("[processPdfGenerator] workflow fetch failed:", e);
-    // Render a placeholder page so section numbering stays consistent
-    d.addPage("a4", "landscape");
-    const lpw = d.internal.pageSize.getWidth();
-    drawPageHeader(d, "Agentic Workflow", data.process.title);
-    setFont(d, "italic", 11);
-    ink(d, C.gray2);
-    text(d, "Workflow graph could not be fetched at export time.", lpw / 2, 100, { align: "center" });
-  }
 
   // §7 Architecture & BOM
   drawArchitectureBom(d, data);

@@ -7,7 +7,6 @@
  */
 
 import pptxgen from "pptxgenjs";
-import { getProcessFlow } from "../services/api";
 import {
   buildInventoryBlocks,
   buildCsvSourceBlocks,
@@ -367,90 +366,7 @@ function addDataLineage(pptx, data) {
   slide.addText(lineage.data_target?.type || "", { x: tx + 0.2, y: cy + 1.0, w: boxW - 0.4, h: 0.5, fontSize: 11, color: T.inkSoft, fontFace: "Calibri" });
 }
 
-/* ─── §6 Agentic Workflow ─────────────────────────────────────────── */
-function addAgenticWorkflow(pptx, flow, data) {
-  const slide = startSection(pptx, 6, "Agentic Workflow", data.process?.title);
-  if (!flow || !flow.lanes || flow.lanes.length === 0) {
-    slide.addText("Workflow graph could not be fetched at export time.", {
-      x: MX, y: 3.5, w: SLIDE_W - MX * 2, h: 0.5,
-      fontSize: 12, italic: true, color: T.inkSoft, fontFace: "Calibri", align: "center",
-    });
-    return;
-  }
 
-  slide.addText(
-    "The workflow below mirrors the in-app swimlane diagram, with Start and End nodes " +
-    "guaranteed on every flow.",
-    { x: MX, y: 1.6, w: SLIDE_W - MX * 2, h: 0.6,
-      fontSize: 11, color: T.ink, fontFace: "Calibri", italic: true },
-  );
-
-  // Build a swimlane table
-  const colSet = new Set();
-  flow.lanes.forEach((l) => (l.nodes || []).forEach((n) => colSet.add(n.column ?? 1)));
-  const cols = Array.from(colSet).sort((a, b) => a - b);
-  const nCols = cols.length || 1;
-
-  // Header row
-  const headerRow = [
-    { text: "Lane", options: { bold: true, color: "FFFFFF", fill: { color: T.navy }, fontSize: 9 } },
-    ...cols.map((c, i) => ({
-      text: `Step ${i + 1}`,
-      options: { bold: true, color: "FFFFFF", fill: { color: T.brandDk }, fontSize: 9 },
-    })),
-  ];
-
-  const LANE_TINTS = ["EFF6FF", "F5F3FF", "ECFDF5", "FFFBEB", "FFF1F2", "ECFEFF", "EEF2FF"];
-  const LANE_INKS  = ["1D4ED8", "6D28D9", "047857", "B45309", "BE123C", "0E7490", "4338CA"];
-
-  const bodyRows = flow.lanes.map((lane, li) => {
-    const tint = LANE_TINTS[li % LANE_TINTS.length];
-    const accent = LANE_INKS[li % LANE_INKS.length];
-    const byCol = new Map();
-    (lane.nodes || []).forEach((n) => byCol.set(n.column ?? 1, n));
-    const cells = [{
-      text: lane.label || `Lane ${li + 1}`,
-      options: { bold: true, color: accent, fill: { color: tint }, fontSize: 9 },
-    }];
-    cols.forEach((c) => {
-      const n = byCol.get(c);
-      if (!n) {
-        cells.push({ text: "", options: { fontSize: 8 } });
-      } else {
-        const t = (n.type || "process").toLowerCase();
-        if (t === "start" || t === "end") {
-          cells.push({
-            text: `★ ${n.label || (t === "start" ? "Start" : "End")}`,
-            options: { bold: true, color: "047857", fill: { color: "D1FAE5" }, fontSize: 8 },
-          });
-        } else if (t === "decision") {
-          cells.push({
-            text: `◆ ${n.label || ""}`,
-            options: { bold: true, color: "3730A3", fill: { color: "E0E7FF" }, fontSize: 8 },
-          });
-        } else {
-          cells.push({
-            text: n.label || "",
-            options: { color: accent, fill: { color: tint }, fontSize: 8 },
-          });
-        }
-      }
-    });
-    return cells;
-  });
-
-  const totalW = SLIDE_W - MX * 2;
-  const laneW = 1.4;
-  const stepW = (totalW - laneW) / nCols;
-
-  slide.addTable([headerRow, ...bodyRows], {
-    x: MX, y: 2.4, w: totalW,
-    colW: [laneW, ...cols.map(() => stepW)],
-    rowH: 0.4,
-    border: { type: "solid", pt: 0.5, color: T.rule },
-    fontFace: "Calibri",
-  });
-}
 
 /* ─── §7 Architecture + BOM ───────────────────────────────────────── */
 function addArchitecture(pptx, data) {
@@ -716,16 +632,6 @@ export async function generateProcessPPTX(data) {
   addFutureState(pptx, data);
   addCsvDetection(pptx, data);
   addDataLineage(pptx, data);
-
-  // §6 Workflow — fetched lazily
-  let flowData = null;
-  try {
-    const flow = await getProcessFlow(data.process._key || data.process.id);
-    flowData = (flow && flow.data) || flow;
-  } catch (e) {
-    console.warn("[processPptxGenerator] workflow fetch failed:", e);
-  }
-  addAgenticWorkflow(pptx, flowData, data);
 
   addArchitecture(pptx, data);
   addOperatingGovernance(pptx, data);
