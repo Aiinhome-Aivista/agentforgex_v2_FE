@@ -59,6 +59,13 @@ export const getAutomationArchitecture = (id) => {
 }
 
 export const getTechnicalDesign = (id) => api.get(`/suggestions/${id}/technical-design`)
+
+// NEW: Dynamic blueprint export payload (GET /api/processes/<key>/blueprint-export)
+// Returns { status, data: { process_key, cover, sections[], closing, generated_at, llm_generated } }
+// Consumed by the blueprint PDF / DOCX / PPTX generators. The frontend renders
+// cover/sections/closing verbatim — no hardcoded blueprint text in the UI.
+export const getProcessBlueprint = (processKey) =>
+  api.get(`/processes/${processKey}/blueprint-export`)
 export const runAutomationArchitecture = (data) => api.post(`/agent/run`, data)
 export const loginUser = (email, password) => api.post('/login', { email, password })
 

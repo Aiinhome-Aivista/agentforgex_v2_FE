@@ -32,9 +32,9 @@ export const COLORS = {
   start_fill: "#D1FAE5",
   start_stroke: "#6EE7B7",
   start_text: "#047857",
-  end_fill: "#D1FAE5",
-  end_stroke: "#6EE7B7",
-  end_text: "#047857",
+  end_fill: "#FEE2E2",
+  end_stroke: "#FCA5A5",
+  end_text: "#991B1B",
 
   /* Decision diamond */
   decision_fill: "#E0E7FF",

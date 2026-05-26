@@ -171,7 +171,12 @@ export default function Chatbot() {
     return () => clearTimeout(timer);
   }, []);
 
-
+  // Clear chat history when switching to a different analysis/suggestion
+  useEffect(() => {
+    setMessages([INITIAL_MESSAGE]);
+    setPendingContext(null);
+    setPendingMessageId(null);
+  }, [processKey]);
 
   useEffect(() => {
     if (messagesEndRef.current) {

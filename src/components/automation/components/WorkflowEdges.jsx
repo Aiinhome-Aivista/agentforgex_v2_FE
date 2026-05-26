@@ -186,7 +186,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
 
         if (isRightward) {
           // Exit right of f
-          if (f.type === "start") {
+          if (f.type === "start" || f.type === "end") {
             const pillW = START_R * 2.4;
             x1 = f.cx + pillW / 2;
           } else if (f.type === "decision") {
@@ -199,6 +199,8 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           // Enter left of t
           if (t.type === "decision") {
             x2 = t.cx - DIAMOND_S;
+          } else if (t.type === "end" || t.type === "start") {
+            x2 = t.cx - (START_R * 2.4) / 2;
           } else {
             x2 = t.cx - NODE_W / 2;
           }
@@ -234,7 +236,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           );
         } else {
           // Exit left of f
-          if (f.type === "start") {
+          if (f.type === "start" || f.type === "end") {
             const pillW = START_R * 2.4;
             x1 = f.cx - pillW / 2;
           } else if (f.type === "decision") {
@@ -247,6 +249,8 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           // Enter right of t
           if (t.type === "decision") {
             x2 = t.cx + DIAMOND_S;
+          } else if (t.type === "end" || t.type === "start") {
+            x2 = t.cx + (START_R * 2.4) / 2;
           } else {
             x2 = t.cx + NODE_W / 2;
           }
@@ -292,7 +296,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         if (isDownward) {
           // Exit bottom of f
           x1 = f.cx;
-          y1 = f.type === "start"
+          y1 = (f.type === "start" || f.type === "end")
             ? f.cy + (START_R * 1.3) / 2
             : f.cy + NODE_H / 2;
 
@@ -300,7 +304,9 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           x2 = t.cx + staggerOffset;
           y2 = t.type === "decision"
             ? t.cy - DIAMOND_S
-            : t.cy - NODE_H / 2;
+            : (t.type === "end" || t.type === "start")
+              ? t.cy - (START_R * 1.3) / 2
+              : t.cy - NODE_H / 2;
 
           // Same column — straight vertical
           if (Math.abs(x1 - x2) < 5) {
@@ -333,7 +339,7 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
         } else {
           // Exit top of f
           x1 = f.cx;
-          y1 = f.type === "start"
+          y1 = (f.type === "start" || f.type === "end")
             ? f.cy - (START_R * 1.3) / 2
             : f.cy - NODE_H / 2;
 
@@ -341,7 +347,9 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           x2 = t.cx + staggerOffset;
           y2 = t.type === "decision"
             ? t.cy + DIAMOND_S
-            : t.cy + NODE_H / 2;
+            : (t.type === "end" || t.type === "start")
+              ? t.cy + (START_R * 1.3) / 2
+              : t.cy + NODE_H / 2;
 
           // Same column — straight vertical
           if (Math.abs(x1 - x2) < 5) {
@@ -385,7 +393,9 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           x2 = t.cx + staggerOffset;
           y2 = t.type === "decision"
             ? t.cy - DIAMOND_S
-            : t.cy - NODE_H / 2;
+            : (t.type === "end" || t.type === "start")
+              ? t.cy - (START_R * 1.3) / 2
+              : t.cy - NODE_H / 2;
 
           const labelX = x1 + 14;
           const labelY = y1 + 4;
@@ -424,7 +434,9 @@ export function renderArrows(flow, nm, svgW, markerId = MARKER_ID) {
           x2 = t.cx + staggerOffset;
           y2 = t.type === "decision"
             ? t.cy + DIAMOND_S
-            : t.cy + NODE_H / 2;
+            : (t.type === "end" || t.type === "start")
+              ? t.cy + (START_R * 1.3) / 2
+              : t.cy + NODE_H / 2;
 
           const labelX = x1 + 14;
           const labelY = y1 - 4;

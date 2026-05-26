@@ -209,6 +209,55 @@ export function StartNode({ n, onDragStart }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   END NODE — Burgundy/red rounded pill with "End" label
+   Mirrors StartNode visually so the canonical pattern reads
+   left-to-right: green Start → process steps → red End.
+═══════════════════════════════════════════════════════════ */
+export function EndNode({ n, onDragStart }) {
+  const w = START_R * 2.4;
+  const h = START_R * 1.3;
+  const rx = h / 2;
+  const label = (n && n.label) || "End";
+
+  return (
+    <g
+      data-node-id={n.id}
+      onMouseDown={onDragStart}
+      className="node-group cursor-grab active:cursor-grabbing"
+    >
+      {/* Subtle shadow */}
+      <rect
+        x={n.cx - w / 2 + 1} y={n.cy - h / 2 + 1.5}
+        width={w} height={h} rx={rx}
+        fill="rgba(0,0,0,0.04)"
+      />
+
+      {/* Pill shape — uses end_* color tokens */}
+      <rect
+        x={n.cx - w / 2} y={n.cy - h / 2}
+        width={w} height={h} rx={rx}
+        fill={COLORS.end_fill || "#FEE2E2"}
+        stroke={COLORS.end_stroke || "#FCA5A5"}
+        strokeWidth={1.5}
+      />
+
+      {/* "End" label */}
+      <text
+        x={n.cx} y={n.cy}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={COLORS.end_text || "#991B1B"}
+        fontSize={15}
+        fontWeight={800}
+        fontFamily="Inter, 'Segoe UI', system-ui, sans-serif"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    DIAMOND NODE — Lavender/indigo decision diamond
 ═══════════════════════════════════════════════════════════ */
 export function DiamondNode({ n, onDragStart }) {
