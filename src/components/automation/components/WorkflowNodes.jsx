@@ -21,7 +21,7 @@ const getNodeAccent = (n) => {
 /* ═══════════════════════════════════════════════════════════
    PROCESS NODE — Clean card with colored left accent bar
 ═══════════════════════════════════════════════════════════ */
-export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
+export function ProcessNode({ n, isOpen, toggleAgent, onDragStart, isOverlapping }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const agentInfo = n.agentInfo;
@@ -51,8 +51,9 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
         x={x} y={y}
         width={NODE_W} height={NODE_H} rx={rx}
         fill={COLORS.node_bg}
-        stroke={laneAccent.accent + "30"}
-        strokeWidth={1}
+        stroke={isOverlapping ? "#EF4444" : (laneAccent.accent + "30")}
+        strokeWidth={isOverlapping ? 2.5 : 1}
+        style={isOverlapping ? { strokeDasharray: "4 4", animation: "pulse 1.5s infinite" } : {}}
       />
 
       {/* Subtle tinted background */}
@@ -102,15 +103,15 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
             <div
               className={`w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 ${isOpen ? "ring-2 ring-offset-1" : ""}`}
               style={{
-                borderColor: LANE_ACCENTS[1].accent + "60",
+                borderColor: isOverlapping ? "#EF4444" : (LANE_ACCENTS[1].accent + "60"),
                 borderWidth: 1.5,
-                ...(isOpen ? { ringColor: LANE_ACCENTS[1].accent } : {}),
+                ...(isOpen ? { ringColor: isOverlapping ? "#EF4444" : LANE_ACCENTS[1].accent } : {}),
               }}
               onClick={toggleAgent}
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
             >
-              <GitBranch size={13} style={{ color: LANE_ACCENTS[1].accent }} className="stroke-[2]" />
+              <GitBranch size={13} style={{ color: isOverlapping ? "#EF4444" : LANE_ACCENTS[1].accent }} className="stroke-[2]" />
             </div>
 
             {/* Agent tooltip card */}
@@ -158,6 +159,14 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
           </div>
         </foreignObject>
       )}
+
+      {isOverlapping && (
+        <g transform={`translate(${x + NODE_W - (agentInfo ? 42 : 22)}, ${y + 12})`} style={{ cursor: "help" }}>
+          <circle cx={6} cy={6} r={8} fill="#FEF2F2" stroke="#EF4444" strokeWidth={1.5} />
+          <path d="M 6 3 L 6 7 M 6 9 L 6 9.5" stroke="#EF4444" strokeWidth={2} strokeLinecap="round" />
+          <title>This node overlaps with another element. Drag to separate or click 'Resolve Overlaps'.</title>
+        </g>
+      )}
     </g>
   );
 }
@@ -165,7 +174,7 @@ export function ProcessNode({ n, isOpen, toggleAgent, onDragStart }) {
 /* ═══════════════════════════════════════════════════════════
    START NODE — Green rounded pill with "Start" label
 ═══════════════════════════════════════════════════════════ */
-export function StartNode({ n, onDragStart }) {
+export function StartNode({ n, onDragStart, isOverlapping }) {
   const w = START_R * 2.4;
   const h = START_R * 1.3;
   const rx = h / 2;
@@ -188,8 +197,9 @@ export function StartNode({ n, onDragStart }) {
         x={n.cx - w / 2} y={n.cy - h / 2}
         width={w} height={h} rx={rx}
         fill={COLORS.start_fill}
-        stroke={COLORS.start_stroke}
-        strokeWidth={1.5}
+        stroke={isOverlapping ? "#EF4444" : COLORS.start_stroke}
+        strokeWidth={isOverlapping ? 2.5 : 1.5}
+        style={isOverlapping ? { strokeDasharray: "4 4", animation: "pulse 1.5s infinite" } : {}}
       />
 
       {/* "Start" label */}
@@ -204,6 +214,14 @@ export function StartNode({ n, onDragStart }) {
       >
         Start
       </text>
+
+      {isOverlapping && (
+        <g transform={`translate(${n.cx + w / 2 - 15}, ${n.cy - h / 2 - 2})`} style={{ cursor: "help" }}>
+          <circle cx={4} cy={4} r={6} fill="#FEF2F2" stroke="#EF4444" strokeWidth={1} />
+          <path d="M 4 2.5 L 4 4.5 M 4 5.5 L 4 6" stroke="#EF4444" strokeWidth={1.5} strokeLinecap="round" />
+          <title>This node overlaps with another element. Drag to separate or click 'Resolve Overlaps'.</title>
+        </g>
+      )}
     </g>
   );
 }
@@ -213,7 +231,7 @@ export function StartNode({ n, onDragStart }) {
    Mirrors StartNode visually so the canonical pattern reads
    left-to-right: green Start → process steps → red End.
 ═══════════════════════════════════════════════════════════ */
-export function EndNode({ n, onDragStart }) {
+export function EndNode({ n, onDragStart, isOverlapping }) {
   const w = START_R * 2.4;
   const h = START_R * 1.3;
   const rx = h / 2;
@@ -237,8 +255,9 @@ export function EndNode({ n, onDragStart }) {
         x={n.cx - w / 2} y={n.cy - h / 2}
         width={w} height={h} rx={rx}
         fill={COLORS.end_fill || "#FEE2E2"}
-        stroke={COLORS.end_stroke || "#FCA5A5"}
-        strokeWidth={1.5}
+        stroke={isOverlapping ? "#EF4444" : (COLORS.end_stroke || "#FCA5A5")}
+        strokeWidth={isOverlapping ? 2.5 : 1.5}
+        style={isOverlapping ? { strokeDasharray: "4 4", animation: "pulse 1.5s infinite" } : {}}
       />
 
       {/* "End" label */}
@@ -253,6 +272,14 @@ export function EndNode({ n, onDragStart }) {
       >
         {label}
       </text>
+
+      {isOverlapping && (
+        <g transform={`translate(${n.cx + w / 2 - 15}, ${n.cy - h / 2 - 2})`} style={{ cursor: "help" }}>
+          <circle cx={4} cy={4} r={6} fill="#FEF2F2" stroke="#EF4444" strokeWidth={1} />
+          <path d="M 4 2.5 L 4 4.5 M 4 5.5 L 4 6" stroke="#EF4444" strokeWidth={1.5} strokeLinecap="round" />
+          <title>This node overlaps with another element. Drag to separate or click 'Resolve Overlaps'.</title>
+        </g>
+      )}
     </g>
   );
 }
@@ -260,7 +287,7 @@ export function EndNode({ n, onDragStart }) {
 /* ═══════════════════════════════════════════════════════════
    DIAMOND NODE — Lavender/indigo decision diamond
 ═══════════════════════════════════════════════════════════ */
-export function DiamondNode({ n, onDragStart }) {
+export function DiamondNode({ n, onDragStart, isOverlapping }) {
   const { cx, cy } = n;
   const s = DIAMOND_S;
 
@@ -276,8 +303,9 @@ export function DiamondNode({ n, onDragStart }) {
       <polygon
         points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
         fill={COLORS.decision_fill}
-        stroke={COLORS.decision_stroke}
-        strokeWidth={1.5}
+        stroke={isOverlapping ? "#EF4444" : COLORS.decision_stroke}
+        strokeWidth={isOverlapping ? 2.5 : 1.5}
+        style={isOverlapping ? { strokeDasharray: "3 3", animation: "pulse 1.5s infinite" } : {}}
       />
 
       {/* Text centered inside */}
@@ -297,6 +325,14 @@ export function DiamondNode({ n, onDragStart }) {
           {ln}
         </text>
       ))}
+
+      {isOverlapping && (
+        <g transform={`translate(${cx + s - 12}, ${cy - s + 4})`} style={{ cursor: "help" }}>
+          <circle cx={4} cy={4} r={6} fill="#FEF2F2" stroke="#EF4444" strokeWidth={1} />
+          <path d="M 4 2.5 L 4 4.5 M 4 5.5 L 4 6" stroke="#EF4444" strokeWidth={1.5} strokeLinecap="round" />
+          <title>This node overlaps with another element. Drag to separate or click 'Resolve Overlaps'.</title>
+        </g>
+      )}
     </g>
   );
 }
@@ -304,7 +340,7 @@ export function DiamondNode({ n, onDragStart }) {
 /* ═══════════════════════════════════════════════════════════
    AGENT NODE — Floating agent detail card
 ═══════════════════════════════════════════════════════════ */
-export function AgentNode({ parentNode, offset, onDragStart }) {
+export function AgentNode({ parentNode, offset, onDragStart, isOverlapping }) {
   const relX = offset?.x ?? (NODE_W / 2 + 50);
   const relY = offset?.y ?? -85;
   const x = parentNode.cx + relX;
@@ -326,47 +362,59 @@ export function AgentNode({ parentNode, offset, onDragStart }) {
              ${x + 15} ${y + height / 2 + 20},
              ${x + 30} ${y + 80}`}
         fill="none"
-        stroke={laneAccent.accent}
-        strokeWidth={1.2}
+        stroke={isOverlapping ? "#EF4444" : laneAccent.accent}
+        strokeWidth={isOverlapping ? 2.2 : 1.2}
         strokeDasharray="4 4"
         markerEnd={`url(#${MARKER_ID})`}
       />
       <g transform={`translate(${parentNode.cx + NODE_W / 2 + 30}, ${parentNode.cy + 10})`}>
-        <rect x={-30} y={-7} width={60} height={14} rx={7} fill="#fff" stroke="#E5E7EB" strokeWidth={0.8} />
+        <rect x={-35} y={-7} width={70} height={14} rx={7} fill="#fff" stroke={isOverlapping ? "#EF4444" : "#E5E7EB"} strokeWidth={0.8} />
         <text
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={7}
           fontWeight={700}
-          fill={laneAccent.accent}
+          fill={isOverlapping ? "#EF4444" : laneAccent.accent}
           letterSpacing="0.8px"
           pointerEvents="none"
         >
-          AUTOMATES
+          {isOverlapping ? "⚠️ STUCK" : "AUTOMATES"}
         </text>
       </g>
 
-      <foreignObject x={x} y={y} width={width} height={height} style={{ overflow: "visible", pointerEvents: "none" }}>
+      <foreignObject
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          overflow: "visible",
+          pointerEvents: "auto",
+        }}
+      >
         <div
           className="w-[240px] bg-white rounded-xl overflow-hidden scale-90 origin-top-left"
           style={{
-            border: `1.5px solid ${laneAccent.accent}40`,
-            boxShadow: `0 12px 32px -8px ${laneAccent.accent}25`,
+            border: isOverlapping ? "2.5px dashed #EF4444" : `1.5px solid ${laneAccent.accent}40`,
+            boxShadow: isOverlapping ? "0 12px 32px -8px rgba(239, 68, 68, 0.35)" : `0 12px 32px -8px ${laneAccent.accent}25`,
+            pointerEvents: "all",
           }}
         >
           <div
             className="p-3 flex items-center gap-2.5 text-white"
-            style={{ background: `linear-gradient(135deg, ${laneAccent.accent}, ${laneAccent.accent}cc)` }}
+            style={{ background: isOverlapping ? "linear-gradient(135deg, #EF4444, #DC2626)" : `linear-gradient(135deg, ${laneAccent.accent}, ${laneAccent.accent}cc)` }}
           >
             <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
               <Bot size={16} className="stroke-[2]" />
             </div>
             <div className="flex flex-col">
               <span className="text-[8px] font-bold uppercase tracking-[0.15em] opacity-80">
-                Orchestrator
+                {isOverlapping ? "STUCK ON ELEMENT" : "Orchestrator"}
               </span>
               <span className="font-bold text-xs tracking-tight leading-none">
-                Process Agent
+                {isOverlapping ? "⚠️ Overlapped Agent" : "Process Agent"}
               </span>
             </div>
           </div>
@@ -383,7 +431,7 @@ export function AgentNode({ parentNode, offset, onDragStart }) {
                 >
                   <div
                     className="mt-0.5 w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: laneAccent.accent }}
+                    style={{ backgroundColor: isOverlapping ? "#EF4444" : laneAccent.accent }}
                   />
                   {t}
                 </li>

@@ -192,9 +192,29 @@ export const buildWorkflowLayout = (data, opts = {}) => {
   let totalHeight = 0;
   let maxRight = 0;
 
+  const occupied = new Set();
+
   safeData.lanes.forEach((lane, li) => {
     const nodes = lane.nodes || [];
-    const maxCol = nodes.reduce((m, n) => Math.max(m, n.column ?? 1), 0);
+    
+    // Prevent overlapping nodes in the same lane and row by shifting columns dynamically
+    const resolvedNodes = nodes.map((node) => {
+      let col = node.column ?? 1;
+      let row = Math.floor(col / maxCols);
+      let colInRow = col % maxCols;
+      let key = `${li}-${row}-${colInRow}`;
+      
+      while (occupied.has(key)) {
+        col++;
+        row = Math.floor(col / maxCols);
+        colInRow = col % maxCols;
+        key = `${li}-${row}-${colInRow}`;
+      }
+      occupied.add(key);
+      return { ...node, resolvedCol: col, resolvedRow: row, resolvedColInRow: colInRow };
+    });
+
+    const maxCol = resolvedNodes.reduce((m, n) => Math.max(m, n.resolvedCol ?? 1), 0);
     const rowCount = Math.floor(maxCol / maxCols) + 1;
     const laneHeight = LANE_H * rowCount + ROW_GAP * (rowCount - 1);
     const laneTop = totalHeight;
@@ -207,13 +227,20 @@ export const buildWorkflowLayout = (data, opts = {}) => {
       rowCount,
     });
 
-    nodes.forEach((node) => {
-      const col = node.column ?? 1;
-      const row = Math.floor(col / maxCols);
-      const colInRow = col % maxCols;
-      const cx = getColCx(colInRow);
-      const cy = laneTop + row * (LANE_H + ROW_GAP) + LANE_H / 2;
-      nm[node.id] = { ...node, cx, cy, laneIndex: li, rowIndex: row };
+    resolvedNodes.forEach((node) => {
+      const cx = getColCx(node.resolvedColInRow);
+      const cy = laneTop + node.resolvedRow * (LANE_H + ROW_GAP) + LANE_H / 2;
+      
+      // Remove temporary layout fields and write back clean column position
+      const { resolvedCol, resolvedRow, resolvedColInRow, ...cleanNode } = node;
+      nm[node.id] = { 
+        ...cleanNode, 
+        column: resolvedCol, 
+        cx, 
+        cy, 
+        laneIndex: li, 
+        rowIndex: resolvedRow 
+      };
       maxRight = Math.max(maxRight, cx + NODE_W / 2);
     });
 

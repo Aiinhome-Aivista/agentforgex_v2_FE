@@ -14,16 +14,20 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { getProcessFlow } from "../../services/api";
 import {
   TITLE_W,
   LABEL_W,
   NODE_W,
+  NODE_H,
   LANE_H,
   COLORS,
   buildWorkflowLayout,
   LANE_STYLES,
+  START_R,
+  DIAMOND_S,
 } from "./utils/workflowUtils";
 import {
   ProcessNode,
@@ -43,6 +47,50 @@ export const sampleDiagramData = {
 
 const GRID_BG =
   "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.12) 1px, transparent 0)";
+
+const getElementBox = (node, offset, isOpen) => {
+  let w = NODE_W;
+  let h = NODE_H;
+  if (node.type === "start" || node.type === "end") {
+    w = START_R * 2.4;
+    h = START_R * 1.3;
+  } else if (node.type === "decision") {
+    w = DIAMOND_S * 2;
+    h = DIAMOND_S * 2;
+  }
+  
+  const boxes = [];
+  // Base node box
+  boxes.push({
+    id: node.id,
+    type: "node",
+    left: node.cx - w / 2,
+    right: node.cx + w / 2,
+    top: node.cy - h / 2,
+    bottom: node.cy + h / 2,
+  });
+  
+  // Agent card box
+  if (isOpen) {
+    const relX = offset?.x ?? (NODE_W / 2 + 50);
+    const relY = offset?.y ?? -85;
+    const ax = node.cx + relX;
+    const ay = node.cy + relY;
+    const aw = 240 * 0.9;
+    const ah = 180 * 0.9;
+    boxes.push({
+      id: `agent-${node.id}`,
+      parentId: node.id,
+      type: "agent",
+      left: ax,
+      right: ax + aw,
+      top: ay,
+      bottom: ay + ah,
+    });
+  }
+  
+  return boxes;
+};
 
 export default function SwimlaneDiagram({
   data: propData,
@@ -145,6 +193,148 @@ export default function SwimlaneDiagram({
     setNodes(layoutBase.nodeMap);
     setAgentOffsets({});
   };
+
+  const overlaps = useMemo(() => {
+    const allBoxes = [];
+    const nodeValues = Object.values(nodes);
+    nodeValues.forEach((n) => {
+      const isOpen = openAgentIds.has(n.id);
+      allBoxes.push(...getElementBox(n, agentOffsets[n.id], isOpen));
+    });
+    
+    const overlappingIds = new Set();
+    const overlappingPairs = [];
+    
+    const isOverlapping = (box1, box2) => {
+      return !(
+        box1.right < box2.left ||
+        box1.left > box2.right ||
+        box1.bottom < box2.top ||
+        box1.top > box2.bottom
+      );
+    };
+    
+    for (let i = 0; i < allBoxes.length; i++) {
+      for (let j = i + 1; j < allBoxes.length; j++) {
+        const b1 = allBoxes[i];
+        const b2 = allBoxes[j];
+        if (b1.parentId === b2.id || b2.parentId === b1.id) continue;
+        
+        if (isOverlapping(b1, b2)) {
+          overlappingIds.add(b1.id);
+          overlappingIds.add(b2.id);
+          overlappingPairs.push([b1, b2]);
+        }
+      }
+    }
+    
+    return {
+      ids: overlappingIds,
+      pairs: overlappingPairs,
+    };
+  }, [nodes, agentOffsets, openAgentIds]);
+
+  const handleResolveOverlaps = () => {
+    let newNodes = { ...nodes };
+    let newAgentOffsets = { ...agentOffsets };
+    
+    const maxIterations = 5;
+    
+    const isOverlapping = (box1, box2) => {
+      return !(
+        box1.right < box2.left ||
+        box1.left > box2.right ||
+        box1.bottom < box2.top ||
+        box1.top > box2.bottom
+      );
+    };
+    
+    for (let iter = 0; iter < maxIterations; iter++) {
+      const allBoxes = [];
+      Object.values(newNodes).forEach((n) => {
+        const isOpen = openAgentIds.has(n.id);
+        allBoxes.push(...getElementBox(n, newAgentOffsets[n.id], isOpen));
+      });
+      
+      let overlapFound = false;
+      
+      for (let i = 0; i < allBoxes.length; i++) {
+        for (let j = i + 1; j < allBoxes.length; j++) {
+          const b1 = allBoxes[i];
+          const b2 = allBoxes[j];
+          if (b1.parentId === b2.id || b2.parentId === b1.id) continue;
+          
+          if (isOverlapping(b1, b2)) {
+            overlapFound = true;
+            
+            // Case A: Two process/base nodes overlap
+            if (b1.type === "node" && b2.type === "node") {
+              const nodeA = newNodes[b1.id];
+              const nodeB = newNodes[b2.id];
+              if (nodeA.laneIndex === nodeB.laneIndex) {
+                if (nodeA.cx < nodeB.cx) {
+                  newNodes[b1.id] = { ...nodeA, cx: nodeA.cx - 80 };
+                  newNodes[b2.id] = { ...nodeB, cx: nodeB.cx + 80 };
+                } else if (nodeA.cx > nodeB.cx) {
+                  newNodes[b1.id] = { ...nodeA, cx: nodeA.cx + 80 };
+                  newNodes[b2.id] = { ...nodeB, cx: nodeB.cx - 80 };
+                } else {
+                  newNodes[b1.id] = { ...nodeA, cx: nodeA.cx - 160 };
+                  newNodes[b2.id] = { ...nodeB, cx: nodeB.cx + 160 };
+                }
+              } else {
+                if (nodeA.cy < nodeB.cy) {
+                  newNodes[b1.id] = { ...nodeA, cy: nodeA.cy - 45 };
+                  newNodes[b2.id] = { ...nodeB, cy: nodeB.cy + 45 };
+                } else {
+                  newNodes[b1.id] = { ...nodeA, cy: nodeA.cy + 45 };
+                  newNodes[b2.id] = { ...nodeB, cy: nodeB.cy - 45 };
+                }
+              }
+            }
+            
+            // Case B: An agent card overlaps a node
+            else if (b1.type === "agent" && b2.type === "node") {
+              const currentOffset = newAgentOffsets[b1.parentId] || { x: NODE_W / 2 + 50, y: -85 };
+              const leftX = -(NODE_W / 2 + 240 * 0.9 + 50);
+              const leftY = -85;
+              const topX = 0;
+              const topY = -(NODE_H / 2 + 180 * 0.9 + 40);
+              const bottomX = 0;
+              const bottomY = (NODE_H / 2 + 40);
+              
+              if (currentOffset.x > 0) {
+                newAgentOffsets[b1.parentId] = { x: leftX, y: leftY };
+              } else if (currentOffset.y === -85) {
+                newAgentOffsets[b1.parentId] = { x: topX, y: topY };
+              } else {
+                newAgentOffsets[b1.parentId] = { x: bottomX, y: bottomY };
+              }
+            }
+            
+            // Case C: An agent card overlaps another agent card
+            else if (b1.type === "agent" && b2.type === "agent") {
+              const offsetA = newAgentOffsets[b1.parentId] || { x: NODE_W / 2 + 50, y: -85 };
+              newAgentOffsets[b1.parentId] = { x: offsetA.x, y: offsetA.y - 75 };
+            }
+          }
+        }
+      }
+      
+      if (!overlapFound) break;
+    }
+    
+    setNodes(newNodes);
+    setAgentOffsets(newAgentOffsets);
+  };
+
+  // Automatically and dynamically resolve overlaps as soon as agent cards are opened
+  useEffect(() => {
+    if (openAgentIds.size > 0) {
+      handleResolveOverlaps();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAgentIds]);
 
   const onMouseDown = (e) => {
     if (error) return;
@@ -486,6 +676,12 @@ export default function SwimlaneDiagram({
               { icon: ZoomIn, onClick: () => handleZoom(1.15), title: "Zoom In" },
               { icon: ZoomOut, onClick: () => handleZoom(0.85), title: "Zoom Out" },
               { icon: RefreshCw, onClick: handleReset, title: "Reset View" },
+              ...(overlaps.pairs.length > 0 ? [{
+                icon: Sparkles,
+                onClick: handleResolveOverlaps,
+                title: "Resolve Overlaps",
+                className: "bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700 border-amber-200 animate-pulse",
+              }] : []),
               {
                 icon: isFullscreen ? Minimize2 : Maximize2,
                 onClick: toggleFullscreen,
@@ -497,7 +693,7 @@ export default function SwimlaneDiagram({
                 onClick={btn.onClick}
                 title={btn.title}
                 disabled={false}
-                className="w-9 h-9 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 transition-all text-gray-500 hover:text-gray-700"
+                className={`w-9 h-9 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm hover:bg-white hover:shadow-md hover:scale-105 active:scale-95 transition-all text-gray-500 hover:text-gray-700 ${btn.className || ""}`}
               >
                 <btn.icon size={16} />
               </button>
@@ -542,6 +738,27 @@ export default function SwimlaneDiagram({
             justifyContent: error ? "center" : "stretch",
           }}
         >
+          {overlaps.pairs.length > 0 && !error && (
+            <div
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl shadow-lg animate-bounce"
+              style={{ animationDuration: "3s" }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse" />
+              <span className="text-xs font-semibold text-amber-800">
+                {overlaps.pairs.length === 1
+                  ? "1 layout overlap detected"
+                  : `${overlaps.pairs.length} layout overlaps detected`}
+              </span>
+              <button
+                onClick={handleResolveOverlaps}
+                className="px-2.5 py-1 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 rounded-lg shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles size={10} />
+                Resolve
+              </button>
+            </div>
+          )}
           {error ? (
             <div className="flex flex-col items-center justify-center p-8 max-w-md mx-auto text-center">
               <div className="w-12 h-12 mb-4 rounded-full bg-red-50 flex items-center justify-center text-red-500 shadow-sm border border-red-100">
@@ -715,17 +932,18 @@ export default function SwimlaneDiagram({
                   {renderArrows(diagramData.flow || [], nodes, svgW, markerId)}
                   {allNodes.map((n) => {
                     const isOpen = openAgentIds.has(n.id);
+                    const isOverlapping = overlaps.ids.has(n.id);
                     if (n.type === "start")
                       return (
-                        <StartNode key={n.id} n={n} onDragStart={onMouseDown} />
+                        <StartNode key={n.id} n={n} onDragStart={onMouseDown} isOverlapping={isOverlapping} />
                       );
                     if (n.type === "end")
                       return (
-                        <EndNode key={n.id} n={n} onDragStart={onMouseDown} />
+                        <EndNode key={n.id} n={n} onDragStart={onMouseDown} isOverlapping={isOverlapping} />
                       );
                     if (n.type === "decision")
                       return (
-                        <DiamondNode key={n.id} n={n} onDragStart={onMouseDown} />
+                        <DiamondNode key={n.id} n={n} onDragStart={onMouseDown} isOverlapping={isOverlapping} />
                       );
                     return (
                       <ProcessNode
@@ -734,6 +952,7 @@ export default function SwimlaneDiagram({
                         isOpen={isOpen}
                         toggleAgent={() => toggleAgent(n.id)}
                         onDragStart={onMouseDown}
+                        isOverlapping={isOverlapping}
                       />
                     );
                   })}
@@ -741,12 +960,14 @@ export default function SwimlaneDiagram({
                   {Array.from(openAgentIds).map((id) => {
                     const n = nodes[id];
                     if (!n) return null;
+                    const isOverlapping = overlaps.ids.has(`agent-${id}`);
                     return (
                       <AgentNode
                         key={`agent-${id}`}
                         parentNode={n}
                         offset={agentOffsets[id]}
                         onDragStart={(e) => onMouseDown(e)}
+                        isOverlapping={isOverlapping}
                       />
                     );
                   })}
