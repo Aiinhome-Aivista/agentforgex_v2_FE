@@ -66,6 +66,15 @@ export const getTechnicalDesign = (id) => api.get(`/suggestions/${id}/technical-
 // cover/sections/closing verbatim — no hardcoded blueprint text in the UI.
 export const getProcessBlueprint = (processKey) =>
   api.get(`/processes/${processKey}/blueprint-export`)
+
+// NEW per spec (Scenario 2) — Suggestion-focused blueprint export payload.
+// GET /api/suggestions/<suggestion_id>/blueprint-export
+// Same shape as getProcessBlueprint, but the content is focused on the
+// chosen suggestion's process step (the one with the higher agentic
+// intervention). Consumed by the new "EXPORT BLUEPRINT PDF/WORD/PPT"
+// entries in the suggestion-level dropdown.
+export const getSuggestionBlueprint = (suggestionId) =>
+  api.get(`/suggestions/${suggestionId}/blueprint-export`)
 export const runAutomationArchitecture = (data) => api.post(`/agent/run`, data)
 export const loginUser = (email, password) => api.post('/login', { email, password })
 

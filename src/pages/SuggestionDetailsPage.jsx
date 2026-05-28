@@ -47,6 +47,7 @@ export default function SuggestionDetailsPage() {
   const navigate = useNavigate();
   const [suggestion, setSuggestion] = useState(null);
   const [processData, setProcessData] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Load data from localStorage (existing pattern)
   useEffect(() => {
@@ -107,7 +108,9 @@ export default function SuggestionDetailsPage() {
       {/* ── Process Header ── */}
       {process && (
         <div
-          className="card p-6 flex items-start justify-between gap-6 opacity-0 animate-slide-up"
+          className={`card p-6 flex items-start justify-between gap-6 opacity-0 animate-slide-up relative ${
+            isDropdownOpen ? "z-30" : "z-10"
+          }`}
           style={{ animationDelay: "0ms", animationFillMode: "both" }}
         >
           <div className="flex-1 min-w-0">
@@ -122,10 +125,14 @@ export default function SuggestionDetailsPage() {
               {process.description}
             </p>
           </div>
-
+ 
           <div className="shrink-0 text-right flex flex-col items-end gap-4">
             {/* ── Export button ── */}
-            <SuggestionExportPdf suggestion={suggestion} processData={processData} />
+            <SuggestionExportPdf
+              suggestion={suggestion}
+              processData={processData}
+              onDropdownOpenChange={setIsDropdownOpen}
+            />
 
             <div>
               <p className="text-xs text-white/40 uppercase tracking-widest mb-1">
@@ -144,7 +151,7 @@ export default function SuggestionDetailsPage() {
 
       {/* ── Step Card + Suggestion ── */}
       <div
-        className="rounded-3xl backdrop-blur-sm shadow-2xl space-y-6 opacity-0 animate-slide-up"
+        className="rounded-3xl backdrop-blur-sm shadow-2xl space-y-6 opacity-0 animate-slide-up relative z-20"
         style={{ animationDelay: "150ms", animationFillMode: "both" }}
       >
         {/* Selected step */}

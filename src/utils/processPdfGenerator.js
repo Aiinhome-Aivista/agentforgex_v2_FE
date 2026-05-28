@@ -23,35 +23,35 @@
  */
 
 import jsPDF from "jspdf";
-import { getProcessBlueprint } from "../services/api";
+import { getProcessBlueprint, getSuggestionBlueprint } from "../services/api";
 
 /* ─── Palette (matches the reference brand styling) ────────────────────── */
 const C = {
-  navy:    [15, 23, 42],
-  ink:     [30, 41, 59],
+  navy: [15, 23, 42],
+  ink: [30, 41, 59],
   inkSoft: [71, 85, 105],
-  gray1:   [51, 65, 85],
-  gray2:   [100, 116, 139],
-  gray3:   [148, 163, 184],
-  border:  [226, 232, 240],
+  gray1: [51, 65, 85],
+  gray2: [100, 116, 139],
+  gray3: [148, 163, 184],
+  border: [226, 232, 240],
   surface: [248, 250, 252],
-  brand:   [16, 185, 129],       // emerald
+  brand: [16, 185, 129],       // emerald
   brandDk: [5, 150, 105],
-  amber:   [180, 83, 9],
-  red:     [220, 38, 38],
+  amber: [180, 83, 9],
+  red: [220, 38, 38],
 };
 
 /* ─── A4 portrait constants ─────────────────────────────────────────────── */
 const PW = 210, PH = 297;
-const ML = 18,  MR = 18, MTop = 22, MBot = 18;
+const ML = 18, MR = 18, MTop = 22, MBot = 18;
 const CW = PW - ML - MR;
-const LINE_H_BODY  = 5.2;
+const LINE_H_BODY = 5.2;
 const LINE_H_TIGHT = 4.6;
 
 /* ─── Drawing helpers ──────────────────────────────────────────────────── */
-const fill   = (d, c) => d.setFillColor(...c);
+const fill = (d, c) => d.setFillColor(...c);
 const stroke = (d, c) => d.setDrawColor(...c);
-const ink    = (d, c) => d.setTextColor(...c);
+const ink = (d, c) => d.setTextColor(...c);
 const setFont = (d, weight = "normal", size = 10) => {
   d.setFontSize(size);
   d.setFont("helvetica", weight);
@@ -168,7 +168,7 @@ function drawSectionHeader(d, sectionNumber, sectionTitle) {
 
   setFont(d, "bold", 18);
   ink(d, C.navy);
-  
+
   const maxW = PW - MR - (ML + 24); // 210 - 18 - 42 = 150
   const cleanTitle = String(sectionTitle ?? "").replace(/→/g, "->");
   const titleLines = d.splitTextToSize(cleanTitle, maxW);
@@ -229,13 +229,13 @@ function renderBullets(d, y, block, redrawHeader) {
 
 function renderTable(d, y, block, redrawHeader) {
   const headers = block.headers || [];
-  const rows    = block.rows || [];
+  const rows = block.rows || [];
   if (headers.length === 0) return y;
 
   const nCols = headers.length;
   // Distribute columns slightly weighted to the last column (description-ish)
   const baseW = CW / nCols;
-  const colW  = headers.map(() => baseW);
+  const colW = headers.map(() => baseW);
 
   const headerH = 9;
   y = pageBreakIfNeeded(d, y, headerH + 12, redrawHeader);
@@ -287,16 +287,16 @@ function renderTable(d, y, block, redrawHeader) {
 }
 
 const RENDERERS = {
-  heading3:   renderHeading3,
-  paragraph:  renderParagraph,
-  bullets:    renderBullets,
-  table:      renderTable,
+  heading3: renderHeading3,
+  paragraph: renderParagraph,
+  bullets: renderBullets,
+  table: renderTable,
 };
 
 /* ─── Section render ───────────────────────────────────────────────────── */
 function renderSection(d, section) {
   const number = section.number != null ? section.number : "";
-  const title  = section.title  || "";
+  const title = section.title || "";
   let y = drawSectionHeader(d, number, `${number ? `${number} — ` : ""}${title}`);
   const redraw = () => {
     fill(d, C.surface);
@@ -369,7 +369,10 @@ export async function generateProcessPDF(data) {
 
   // ── Fetch the dynamic blueprint payload ──────────────────────────────
   const resp = await getProcessBlueprint(processKey);
-  const env  = unwrap(resp);
+  const env = unwrap(resp);
+  if (env && env.status === false) {
+    throw new Error(env.message || "Blueprint API failed to generate payload.");
+  }
   const payload = env?.data || env;
   if (!payload || !payload.cover || !Array.isArray(payload.sections)) {
     throw new Error("Blueprint API returned an invalid payload.");
@@ -396,3 +399,44 @@ export async function generateProcessPDF(data) {
   const fname = `${(payload.cover.title || "Process").replace(/[^a-z0-9_-]+/gi, "_")}_Blueprint.pdf`;
   d.save(fname);
 }
+
+/* ─── NEW: suggestion-focused blueprint PDF (Scenario 2) ──────────────── */
+/**
+ * Drives the "EXPORT BLUEPRINT PDF" action on the suggestion detail page.
+ *
+ * Same rendering pipeline as generateProcessPDF, but fetches from the new
+ * suggestion-level endpoint:
+ *
+ *     GET /api/suggestions/<suggestion_id>/blueprint-export
+ *
+ * The payload shape is identical, so the same drawCover / renderSection /
+ * renderClosing functions render it.  Content is focused on the chosen
+ * suggestion's anchor step (the one with higher agentic intervention).
+ *
+ * Public entry point: generateSuggestionBlueprintPDF(suggestionId)
+ */
+export async function generateSuggestionBlueprintPDF(suggestionId) {
+  if (!suggestionId) throw new Error("generateSuggestionBlueprintPDF: suggestion id missing");
+
+  const resp = await getSuggestionBlueprint(suggestionId);
+  const env = unwrap(resp);
+  if (env && env.status === false) {
+    throw new Error(env.message || "Suggestion blueprint API failed to generate payload.");
+  }
+  const payload = env?.data || env;
+  if (!payload || !payload.cover || !Array.isArray(payload.sections)) {
+    throw new Error("Suggestion blueprint API returned an invalid payload.");
+  }
+
+  const d = new jsPDF("portrait", "mm", "a4");
+
+  drawCover(d, payload.cover);
+  for (const sec of payload.sections) renderSection(d, sec);
+  if (payload.closing) renderClosing(d, payload.closing);
+  drawFooter(d);
+
+  const safeTitle = (payload.cover.title || "Suggestion")
+    .replace(/[^a-z0-9_-]+/gi, "_");
+  d.save(`${safeTitle}_Suggestion_Blueprint.pdf`);
+}
+

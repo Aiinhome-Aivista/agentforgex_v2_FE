@@ -13,25 +13,25 @@
  */
 
 import pptxgen from "pptxgenjs";
-import { getProcessBlueprint } from "../services/api";
+import { getProcessBlueprint, getSuggestionBlueprint } from "../services/api";
 
 /* ─── Palette ──────────────────────────────────────────────────────────── */
 const T = {
-  paper:   "FFFFFF",
-  ink:     "0F172A",
+  paper: "FFFFFF",
+  ink: "0F172A",
   inkSoft: "475569",
   inkMute: "94A3B8",
-  rule:    "E2E8F0",
+  rule: "E2E8F0",
   surface: "F8FAFC",
-  brand:   "10B981",
+  brand: "10B981",
   brandDk: "059669",
-  navy:    "1E293B",
-  amber:   "B45309",
+  navy: "1E293B",
+  amber: "B45309",
 };
 
 const SLIDE_W = 10;
 const SLIDE_H = 7.5;
-const MX  = 0.5;
+const MX = 0.5;
 const TOP = 0.4;
 const BOTTOM_Y = 7.0;
 
@@ -181,7 +181,7 @@ function renderBullets(slide, cursor, block) {
 
 function renderTable(slide, cursor, block) {
   const headers = block.headers || [];
-  const rows    = block.rows || [];
+  const rows = block.rows || [];
   if (headers.length === 0) return cursor;
 
   const headerRow = headers.map((h) => ({
@@ -212,10 +212,10 @@ function renderTable(slide, cursor, block) {
 }
 
 const SLIDE_RENDERERS = {
-  heading3:  renderHeading3,
+  heading3: renderHeading3,
   paragraph: renderParagraph,
-  bullets:   renderBullets,
-  table:     renderTable,
+  bullets: renderBullets,
+  table: renderTable,
 };
 
 /* ─── Section paginator: lays out blocks, opens continuation slides as
@@ -241,7 +241,7 @@ function renderSection(pptx, section) {
 
     if (cursor + need > BOTTOM_Y) {
       const ct = continuationSlide(pptx, sectionTitle);
-      slide  = ct.slide;
+      slide = ct.slide;
       cursor = ct.cursor;
     }
     cursor = fn(slide, cursor, block);
@@ -260,7 +260,7 @@ function renderClosing(pptx, closing) {
     if (block.type === "paragraph") need = approxLines(block.text, 95) * 0.22 + 0.15;
     if (cursor + need > BOTTOM_Y) {
       const ct = continuationSlide(pptx, sectionTitle);
-      slide  = ct.slide;
+      slide = ct.slide;
       cursor = ct.cursor;
     }
     cursor = fn(slide, cursor, block);
@@ -293,7 +293,10 @@ export async function generateProcessPPTX(data) {
   if (!processKey) throw new Error("generateProcessPPTX: process_key missing");
 
   const resp = await getProcessBlueprint(processKey);
-  const env  = unwrap(resp);
+  const env = unwrap(resp);
+  if (env && env.status === false) {
+    throw new Error(env.message || "Blueprint API failed to generate payload.");
+  }
   const payload = env?.data || env;
   if (!payload || !payload.cover || !Array.isArray(payload.sections)) {
     throw new Error("Blueprint API returned an invalid payload.");
@@ -301,9 +304,9 @@ export async function generateProcessPPTX(data) {
 
   const pptx = new pptxgen();
   pptx.defineLayout({ name: "STD_10X75", width: SLIDE_W, height: SLIDE_H });
-  pptx.layout  = "STD_10X75";
-  pptx.author  = "AgentForge";
-  pptx.title   = (payload.cover?.title || "Blueprint").replace(/[^\x00-\x7F]/g, " ");
+  pptx.layout = "STD_10X75";
+  pptx.author = "AgentForge";
+  pptx.title = (payload.cover?.title || "Blueprint").replace(/[^\x00-\x7F]/g, " ");
   pptx.defineSlideMaster({ title: "MASTER", background: { color: T.paper }, objects: [] });
 
   // Cover
@@ -323,3 +326,35 @@ export async function generateProcessPPTX(data) {
   const fname = `${(payload.cover?.title || "Process").replace(/[^a-z0-9_-]+/gi, "_")}_Blueprint.pptx`;
   await pptx.writeFile({ fileName: fname });
 }
+
+/* ─── NEW: suggestion-focused blueprint PPTX (Scenario 2) ────────────── */
+export async function generateSuggestionBlueprintPPTX(suggestionId) {
+  if (!suggestionId) throw new Error("generateSuggestionBlueprintPPTX: suggestion id missing");
+
+  const resp = await getSuggestionBlueprint(suggestionId);
+  const env = unwrap(resp);
+  if (env && env.status === false) {
+    throw new Error(env.message || "Suggestion blueprint API failed to generate payload.");
+  }
+  const payload = env?.data || env;
+  if (!payload || !payload.cover || !Array.isArray(payload.sections)) {
+    throw new Error("Suggestion blueprint API returned an invalid payload.");
+  }
+
+  const pptx = new pptxgen();
+  pptx.defineLayout({ name: "STD_10X75", width: SLIDE_W, height: SLIDE_H });
+  pptx.layout = "STD_10X75";
+  pptx.author = "AgentForge";
+  pptx.title = (payload.cover?.title || "Suggestion Blueprint").replace(/[^\x00-\x7F]/g, " ");
+  pptx.defineSlideMaster({ title: "MASTER", background: { color: T.paper }, objects: [] });
+
+  addCover(pptx, payload.cover);
+  for (const sec of payload.sections) renderSection(pptx, sec);
+  renderClosing(pptx, payload.closing);
+  applyFooter(pptx);
+
+  const safeTitle = (payload.cover?.title || "Suggestion")
+    .replace(/[^a-z0-9_-]+/gi, "_");
+  await pptx.writeFile({ fileName: `${safeTitle}_Suggestion_Blueprint.pptx` });
+}
+
