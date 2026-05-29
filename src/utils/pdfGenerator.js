@@ -369,19 +369,23 @@ function drawSwimlaneWorkflowPage(d, flowData) {
   });
 
   // Final overflow check: if layout is still wider than the page,
-  // apply X-ONLY scale to content. Y stays native.
+  // apply X-ONLY scale to content area ONLY. Lane labels stay at a fixed width (laneLabelW).
+  // Y stays native.
   const scaleX = layout.width > usableW
-    ? usableW / layout.width
+    ? (usableW - laneLabelW) / (layout.width - laneLabelW)
     : 1;
-  const renderedW = layout.width * scaleX;
+  const renderedW = laneLabelW + (layout.width - laneLabelW) * scaleX;
   const renderedH = layout.height;
 
   const ox = 18 + Math.max(0, (usableW - renderedW) / 2);
   const oy = startY;
 
-  // Helpers for converting layout-mm to physical-mm. X is scaled (so the
-  // diagram fits horizontally); Y is preserved (lane heights stay native).
-  const X = (lx) => ox + lx * scaleX;
+  // Helpers for converting layout-mm to physical-mm. X is scaled ONLY in the content area
+  // (after the fixed laneLabelW); Y is preserved (lane heights stay native).
+  const X = (lx) => {
+    const relativeX = lx - laneLabelW;
+    return ox + laneLabelW + relativeX * scaleX;
+  };
   const Y = (ly) => oy + ly;
   const W = (lw) => lw * scaleX;
   const H = (lh) => lh;

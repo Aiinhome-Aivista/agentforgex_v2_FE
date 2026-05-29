@@ -147,10 +147,37 @@ export function layoutWorkflow(flow, opts = {}) {
     return { title: safeFlow?.title || "", width: 0, height: 0, lanes: [], nodes: [], edges: [] };
   }
 
-  // 1. Collect every used column index across all lanes and densify them.
+  const occupied = new Set();
+  const lanes = [];
+  const nodesById = {};
+  const allNodes = [];
+  let cursorY = padding + titleHeight;
+
+  // 1. Resolve overlaps and shift columns dynamically exactly like the UI's buildWorkflowLayout
+  const resolvedLanes = safeFlow.lanes.map((lane, li) => {
+    const nodes = lane.nodes || [];
+    const resolvedNodes = nodes.map((node) => {
+      let col = node.column ?? 1;
+      let row = Math.floor(col / maxCols);
+      let colInRow = col % maxCols;
+      let key = `${li}-${row}-${colInRow}`;
+      
+      while (occupied.has(key)) {
+        col++;
+        row = Math.floor(col / maxCols);
+        colInRow = col % maxCols;
+        key = `${li}-${row}-${colInRow}`;
+      }
+      occupied.add(key);
+      return { ...node, resolvedCol: col, resolvedRow: row, resolvedColInRow: colInRow };
+    });
+    return { ...lane, nodes: resolvedNodes };
+  });
+
+  // 2. Collect used resolved columns to densify the horizontal layout for reports
   const usedColsSet = new Set();
-  safeFlow.lanes.forEach((lane) => {
-    (lane.nodes || []).forEach((n) => usedColsSet.add((n.column ?? 1) % maxCols));
+  resolvedLanes.forEach((lane) => {
+    (lane.nodes || []).forEach((n) => usedColsSet.add(n.resolvedColInRow));
   });
   const usedCols = Array.from(usedColsSet).sort((a, b) => a - b);
   const nCols = Math.max(1, usedCols.length);
@@ -165,18 +192,13 @@ export function layoutWorkflow(flow, opts = {}) {
     return padding + laneLabelWidth + idx * (nodeW + colGap);
   };
 
-  // 2. Lay out each lane on its own row(s).
-  const lanes = [];
-  const nodesById = {};
-  const allNodes = [];
-  let cursorY = padding + titleHeight;
-
-  safeFlow.lanes.forEach((lane, li) => {
+  // 3. Lay out each lane and its resolved nodes
+  resolvedLanes.forEach((lane, li) => {
     const accent = LANE_ACCENTS[li % LANE_ACCENTS.length];
     const laneTop = cursorY;
 
     // Calculate maximum column index inside this lane to determine the row count
-    const maxCol = (lane.nodes || []).reduce((m, n) => Math.max(m, n.column ?? 1), 0);
+    const maxCol = (lane.nodes || []).reduce((m, n) => Math.max(m, n.resolvedCol ?? 1), 0);
     const rowCount = Math.floor(maxCol / maxCols) + 1;
     const currentLaneH = rowCount * laneHeight + (rowCount - 1) * rowGap;
 
@@ -194,9 +216,9 @@ export function layoutWorkflow(flow, opts = {}) {
 
     (lane.nodes || []).forEach((node) => {
       const type = (node.type || "process").toLowerCase();
-      const col  = node.column ?? 1;
-      const row  = Math.floor(col / maxCols);
-      const colInRow = col % maxCols;
+      const col  = node.resolvedCol;
+      const row  = node.resolvedRow;
+      const colInRow = node.resolvedColInRow;
 
       const x    = colLeftX(colInRow);
       // Vertically center the node inside its specific row of the lane
@@ -218,9 +240,10 @@ export function layoutWorkflow(flow, opts = {}) {
       }
 
       const laidNode = {
+        ...node,
         id:        node.id,
         type,
-        label:     node.label || "",
+        label:     node.label || (type === "start" ? "Start" : type === "end" ? "End" : ""),
         x, y,
         w:         nodeW,
         h:         nodeH,
