@@ -152,34 +152,35 @@ export default function ExportPDF({ data }) {
             </button>
 
             {/* Visual Divider */}
-          <div className="my-1 border-t border-white/10" />
+          {/* <div className="my-1 border-t border-white/10" /> */}
+          
 
             {/* Legacy Section */}
-            <div className="px-3 py-1.5 text-[9px] font-extrabold text-gray-400 uppercase tracking-widest opacity-80">
+            {/* <div className="px-3 py-1.5 text-[9px] font-extrabold text-gray-400 uppercase tracking-widest opacity-80">
               Legacy Analysis
-            </div>
+            </div> */}
 
-            <button
+            {/* <button
               onClick={() => handleDownload("legacy-pdf")}
               className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-xl transition-all text-left"
             >
               <FileIcon size={14} className="text-red-400/80" />
               <span>Export Legacy PDF</span>
-            </button>
-            <button
+            </button> */}
+            {/* <button
               onClick={() => handleDownload("legacy-word")}
               className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-xl transition-all text-left"
             >
               <FileText size={14} className="text-blue-400/80" />
               <span>Export Legacy Word</span>
-            </button>
-            <button
+            </button> */}
+            {/* <button
               onClick={() => handleDownload("legacy-pptx")}
               className="w-full flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-brand-500 hover:bg-brand-500/10 rounded-xl transition-all text-left"
             >
               <Presentation size={14} className="text-orange-400/80" />
               <span>Export Legacy PPT</span>
-            </button>
+            </button> */}
           </div>
         </div>
       )}

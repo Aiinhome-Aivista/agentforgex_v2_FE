@@ -21,12 +21,12 @@ import {
 import {
   getTechnicalDesign, getProcessFlow, downloadSuggestionCode,
 } from "../../services/api";
-import { generatePDF  } from "../../utils/pdfGenerator";
+import { generatePDF } from "../../utils/pdfGenerator";
 import { generateDOCX } from "../../utils/docxGenerator";
 import { generatePPTX } from "../../utils/pptxGenerator";
 
 // NEW — suggestion-focused blueprint generators (Scenario 2)
-import { generateSuggestionBlueprintPDF  } from "../../utils/processPdfGenerator";
+import { generateSuggestionBlueprintPDF } from "../../utils/processPdfGenerator";
 import { generateSuggestionBlueprintDOCX } from "../../utils/processDocxGenerator";
 import { generateSuggestionBlueprintPPTX } from "../../utils/processPptxGenerator";
 
@@ -36,14 +36,14 @@ import { generateSuggestionBlueprintPPTX } from "../../utils/processPptxGenerato
 // kind: "blueprint"  → NEW per Scenario 2 — calls the suggestion blueprint API
 const FORMATS = [
   // Technical Design
-  { id: "pdf",   kind: "doc",       label: "Export as PDF",         Icon: FileIcon,     iconCls: "text-red-400",    fn: generatePDF  },
-  { id: "word",  kind: "doc",       label: "Export as Word",        Icon: FileText,     iconCls: "text-blue-400",   fn: generateDOCX },
-  { id: "pptx",  kind: "doc",       label: "Export as PowerPoint",  Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  { id: "pdf", kind: "doc", label: "Export as PDF", Icon: FileIcon, iconCls: "text-red-400", fn: generatePDF },
+  { id: "word", kind: "doc", label: "Export as Word", Icon: FileText, iconCls: "text-blue-400", fn: generateDOCX },
+  { id: "pptx", kind: "doc", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
   // Code
-  { id: "code",  kind: "code",      label: "Download the Code",     Icon: FileArchive,  iconCls: "text-emerald-400" },
+  { id: "code", kind: "code", label: "Download the Code", Icon: FileArchive, iconCls: "text-emerald-400" },
   // Blueprint (NEW)
-  { id: "bp-pdf",  kind: "blueprint", label: "Export Blueprint PDF",        Icon: FileIcon,     iconCls: "text-red-300",    fn: generateSuggestionBlueprintPDF  },
-  { id: "bp-word", kind: "blueprint", label: "Export Blueprint Word",       Icon: FileText,     iconCls: "text-blue-300",   fn: generateSuggestionBlueprintDOCX },
+  { id: "bp-pdf", kind: "blueprint", label: "Export Blueprint PDF", Icon: FileIcon, iconCls: "text-red-300", fn: generateSuggestionBlueprintPDF },
+  { id: "bp-word", kind: "blueprint", label: "Export Blueprint Word", Icon: FileText, iconCls: "text-blue-300", fn: generateSuggestionBlueprintDOCX },
   { id: "bp-pptx", kind: "blueprint", label: "Export Blueprint PowerPoint", Icon: Presentation, iconCls: "text-orange-300", fn: generateSuggestionBlueprintPPTX },
 ];
 
@@ -164,7 +164,7 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
   // Group items by kind so the dropdown can show section headers
   const techItems = FORMATS.filter((f) => f.kind === "doc");
   const codeItems = FORMATS.filter((f) => f.kind === "code");
-  const bpItems   = FORMATS.filter((f) => f.kind === "blueprint");
+  const bpItems = FORMATS.filter((f) => f.kind === "blueprint");
 
   return (
     <>
@@ -219,13 +219,18 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
             </>
           )}
         </button>
- 
+
         {showFormats && (
           <div
             className="
               absolute right-0 top-12 w-64
-              bg-[#0a0d18] border border-white/10 rounded-xl
-              z-[100] overflow-hidden
+    bg-[#0a0d18]
+    isolate
+    shadow-2xl
+    border border-white/10
+    rounded-xl
+    z-[9999]
+    overflow-hidden
               animate-in fade-in slide-in-from-top-2 duration-150
             "
             role="menu"
