@@ -153,10 +153,23 @@ function addTOCSlide(pptx, data) {
   addHeader(slide, "TABLE OF CONTENTS");
   addTitle(slide, null, "Table of Contents");
 
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
+
   // 1. Agentic Process Workflow (Manual first entry)
   const items = [
     ["01", "Agentic Process Workflow"],
-    ...(data.sections || []).map((s, i) => [
+    ...(data.sections || []).filter(s => !isAddonSection(s.title)).map((s, i) => [
       String(i + 2).padStart(2, "0"),
       s.title || "",
     ])
@@ -168,8 +181,8 @@ function addTOCSlide(pptx, data) {
       { text: "Section", options: { bold: true, color: T.paper, fill: { color: T.navy }, fontSize: 11 } },
     ],
     ...items.map(([n, t], i) => [
-      { text: n, options: { bold: true, color: T.brand, fill: { color: i % 2 === 0 ? T.surface : T.paper }, fontSize: 11 } },
-      { text: t, options: { color: T.ink, fill: { color: i % 2 === 0 ? T.surface : T.paper }, fontSize: 11 } },
+      { text: n, options: { bold: true, color: T.brand, fontSize: 11 } },
+      { text: t, options: { color: T.ink, fontSize: 11 } },
     ]),
   ];
 
@@ -658,11 +671,25 @@ export async function generatePPTX(data, title = "Technical_Design", flowData = 
     objects: [],
   });
 
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
+
   addCoverSlide(pptx, data, title);
   addTOCSlide(pptx, data);
   addWorkflowSlide(pptx, flowData);
 
-  (data.sections || []).forEach((section, i) => addSectionSlides(pptx, section, i));
+  const filteredSections = (data.sections || []).filter(s => !isAddonSection(s.title));
+  filteredSections.forEach((section, i) => addSectionSlides(pptx, section, i));
 
   // Footers — pptxgenjs doesn't easily back-fill counters, so we walk slides
   // and add per-slide footers after creation:

@@ -152,7 +152,7 @@ export default function ExportPDF({ data }) {
             </button>
 
             {/* Visual Divider */}
-            <div className="my-1 border-t border-white/10" />
+          <div className="my-1 border-t border-white/10" />
 
             {/* Legacy Section */}
             <div className="px-3 py-1.5 text-[9px] font-extrabold text-gray-400 uppercase tracking-widest opacity-80">

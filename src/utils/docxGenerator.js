@@ -185,10 +185,23 @@ function buildCover(data, titleArg) {
 // ─── TOC (derived from sections[], not from data.table_of_contents) ──────────
 
 function buildTOC(data) {
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
+
   // 1. Agentic Process Workflow (Manual first entry)
   const items = [
     ["01", "Agentic Process Workflow"],
-    ...(data.sections || []).map((s, i) => [
+    ...(data.sections || []).filter(s => !isAddonSection(s.title)).map((s, i) => [
       String(i + 2).padStart(2, "0"),
       s.title || "",
     ])
@@ -211,13 +224,11 @@ function buildTOC(data) {
           children: [
             new TableCell({
               children: [p(run(num, { bold: true, color: HEX.brand, size: 22 }))],
-              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? HEX.surface : HEX.paper },
               borders: borders(HEX.rule),
               margins: { top: 100, bottom: 100, left: 160, right: 100 },
             }),
             new TableCell({
               children: [p(run(title, { color: HEX.ink, size: 22 }))],
-              shading: { type: ShadingType.SOLID, color: i % 2 === 0 ? HEX.surface : HEX.paper },
               borders: borders(HEX.rule),
               margins: { top: 100, bottom: 100, left: 160, right: 160 },
             }),
@@ -614,11 +625,26 @@ export async function generateDOCX(data, title = "Technical_Design", flowData = 
     ],
   });
 
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
+
+  const filteredSections = (data.sections || []).filter(s => !isAddonSection(s.title));
+
   const allChildren = [
     ...buildCover(data, title),
     ...buildTOC(data),
     ...buildWorkflowSection(flowData),
-    ...(data.sections || []).flatMap((s, i) => renderSection(s, i)),
+    ...filteredSections.flatMap((s, i) => renderSection(s, i)),
   ];
 
   const doc = new Document({

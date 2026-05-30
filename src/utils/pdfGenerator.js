@@ -219,7 +219,6 @@ function drawTOC(d, data, sectionStartPages) {
 
   // 1. Agentic Process Workflow (Manual entry for the landscape workflow page)
   const wfTitle = "Agentic Process Workflow";
-  rect(d, ML, y - 5, CW, 9, C.surface, 1);
   setFont(d, "bold", 10);
   ink(d, C.accent);
   text(d, "01", ML + 3, y + 1);
@@ -235,17 +234,26 @@ function drawTOC(d, data, sectionStartPages) {
   setFont(d, "bold", 10);
   ink(d, C.gray1);
   text(d, "03", PW - MR - 2, y + 1, { align: "right" });
-  y += 9;
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
 
-  const sections = data.sections || [];
+  const sections = (data.sections || []).filter(sec => !isAddonSection(sec.title));
   sections.forEach((sec, i) => {
     y = pageBreakIfNeeded(d, y, 11);
     // Renumber to start from 02
     const num = String(i + 2).padStart(2, "0");
     const title = sec.title || "Section";
     const page = sectionStartPages?.[i] ?? "";
-
-    if ((i + 1) % 2 === 0) rect(d, ML, y - 5, CW, 9, C.surface, 1);
 
     setFont(d, "bold", 10);
     ink(d, C.accent);
@@ -1063,8 +1071,22 @@ export async function generatePDF(data, title = "Technical_Design", flowData = n
   //    page. CRITICAL: pass orientation explicitly — without it, jsPDF
   //    inherits the previous page's orientation (landscape), which is the
   //    root cause of "everything after the workflow is sideways".
+  const isAddonSection = (title) => {
+    if (!title) return false;
+    const t = title.toLowerCase();
+    return (
+      t.includes("system and module inventory") ||
+      t.includes("system & module inventory") ||
+      t.includes("csv source") ||
+      t.includes("document data lineage") ||
+      t.includes("agentic suggestion blueprint") ||
+      t.includes("per-suggestion blueprint")
+    );
+  };
+
   const sectionStartPages = [];
-  (data.sections || []).forEach((section, i) => {
+  const filteredSections = (data.sections || []).filter(sec => !isAddonSection(sec.title));
+  filteredSections.forEach((section, i) => {
     d.addPage("a4", "portrait");
     sectionStartPages.push(d.getNumberOfPages());
     drawSection(d, section, i);
