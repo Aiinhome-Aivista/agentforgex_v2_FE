@@ -116,7 +116,7 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions, 
 
   const activeStep = selectedStep || displayStep
   const stepSuggestions = activeStep
-    ? (suggestions?.filter(s => s.step_key === activeStep.id) || [])
+    ? (suggestions?.filter(s => s.step_key === activeStep.id || s.step_key === activeStep._key) || [])
     : []
 
   if (isPdf) {
@@ -255,79 +255,79 @@ export default function OverviewTab({ insights, topTargets, steps, suggestions, 
                 )}
 
                 <div className={clsx("flex flex-col gap-y-10 mt-8", activeLoading && " bg-black/20 opacity-25 backdrop-blur-md transition-all duration-500")}>
-                {(() => {
-                  const chunkedSteps = [];
-                  for (let i = 0; i < steps.length; i += 4) {
-                    chunkedSteps.push(steps.slice(i, i + 4));
-                  }
+                  {(() => {
+                    const chunkedSteps = [];
+                    for (let i = 0; i < steps.length; i += 4) {
+                      chunkedSteps.push(steps.slice(i, i + 4));
+                    }
 
-                  return chunkedSteps.map((chunk, rowIndex) => {
-                    const isReversed = rowIndex % 2 !== 0;
-                    const displaySteps = isReversed ? [...chunk].reverse() : chunk;
+                    return chunkedSteps.map((chunk, rowIndex) => {
+                      const isReversed = rowIndex % 2 !== 0;
+                      const displaySteps = isReversed ? [...chunk].reverse() : chunk;
 
-                    return (
-                      <div key={rowIndex} className="relative">
-                        <div className="grid grid-cols-4 gap-x-12 gap-y-16">
-                          {displaySteps.map((step, i) => {
-                            const isFirstInRow = i === 0;
-                            const isLastInRow = i === displaySteps.length - 1;
+                      return (
+                        <div key={rowIndex} className="relative">
+                          <div className="grid grid-cols-4 gap-x-12 gap-y-16">
+                            {displaySteps.map((step, i) => {
+                              const isFirstInRow = i === 0;
+                              const isLastInRow = i === displaySteps.length - 1;
 
-                            
-                            const showHorizontalArrow = isReversed ? i > 0 : i < displaySteps.length - 1;
-                            const showVerticalArrow = (isReversed ? i === 0 : i === displaySteps.length - 1) && rowIndex < chunkedSteps.length - 1;
 
-                            return (
-                              <div
-                                key={step.id || i}
-                                className="relative group/step"
-                                style={isReversed && i === 0 ? { gridColumnStart: 4 - chunk.length + 1 } : {}}
-                              >
-                                <StepCard
-                                  step={step}
-                                  index={rowIndex * 4 + i}
-                                  isSelected={selectedStep?.id === step.id}
-                                  isLast={step.id === steps[steps.length - 1].id}
-                                  onClick={() => selectedStep?.id === step.id ? handleBack() : handleSelectStep(step)}
-                                />
+                              const showHorizontalArrow = isReversed ? i > 0 : i < displaySteps.length - 1;
+                              const showVerticalArrow = (isReversed ? i === 0 : i === displaySteps.length - 1) && rowIndex < chunkedSteps.length - 1;
 
-                                {/* Horizontal Arrow */}
-                                {showHorizontalArrow && (
-                                  <div className={clsx(
-                                    "absolute top-1/2 -translate-y-1/2 z-10 flex items-center",
-                                    isReversed ? "-left-10" : "-right-10"
-                                  )}>
-                                    {isReversed ? (
-                                      <div className="flex items-center">
-                                        <div className="w-0 h-0 border-t-4 border-b-4 border-r-4
+                              return (
+                                <div
+                                  key={step.id || i}
+                                  className="relative group/step"
+                                  style={isReversed && i === 0 ? { gridColumnStart: 4 - chunk.length + 1 } : {}}
+                                >
+                                  <StepCard
+                                    step={step}
+                                    index={rowIndex * 4 + i}
+                                    isSelected={selectedStep?.id === step.id}
+                                    isLast={step.id === steps[steps.length - 1].id}
+                                    onClick={() => selectedStep?.id === step.id ? handleBack() : handleSelectStep(step)}
+                                  />
+
+                                  {/* Horizontal Arrow */}
+                                  {showHorizontalArrow && (
+                                    <div className={clsx(
+                                      "absolute top-1/2 -translate-y-1/2 z-10 flex items-center",
+                                      isReversed ? "-left-10" : "-right-10"
+                                    )}>
+                                      {isReversed ? (
+                                        <div className="flex items-center">
+                                          <div className="w-0 h-0 border-t-4 border-b-4 border-r-4
                                             border-t-transparent border-b-transparent border-r-white" />
-                                        <div className="w-6 h-px bg-white" />
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center">
-                                        <div className="w-6 h-px bg-white" />
-                                        <div className="w-0 h-0 border-t-4 border-b-4 border-l-4
+                                          <div className="w-6 h-px bg-white" />
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center">
+                                          <div className="w-6 h-px bg-white" />
+                                          <div className="w-0 h-0 border-t-4 border-b-4 border-l-4
                                             border-t-transparent border-b-transparent border-l-white" />
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
 
-                                {/* Vertical Arrow */}
-                                {showVerticalArrow && (
-                                  <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                                    <div className="w-px h-6 bg-white" />
-                                    <div className="w-0 h-0 border-l-4 border-r-4 border-t-4
+                                  {/* Vertical Arrow */}
+                                  {showVerticalArrow && (
+                                    <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                                      <div className="w-px h-6 bg-white" />
+                                      <div className="w-0 h-0 border-l-4 border-r-4 border-t-4
                                         border-l-transparent border-r-transparent border-t-white" />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  });
-                })()}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>

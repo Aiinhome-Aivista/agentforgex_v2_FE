@@ -126,7 +126,12 @@ export default function WorkspacesPage() {
                          hover:bg-white/[0.06] transition-colors"
             >
               <div
-                onClick={() => navigate(`/workspaces/${w.id}`)}
+                onClick={() => {
+                  if (w.session_id) {
+                    localStorage.setItem('session_id', w.session_id);
+                  }
+                  navigate(`/workspaces/${w.id}`);
+                }}
                 className="flex-1 min-w-0 cursor-pointer pr-4"
               >
                 <p

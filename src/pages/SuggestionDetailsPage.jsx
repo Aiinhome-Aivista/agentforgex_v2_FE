@@ -99,7 +99,7 @@ export default function SuggestionDetailsPage() {
 
   const process = processData?.process;
   const steps = processData?.steps || [];
-  const matchedStep = steps.find((s) => s.id === suggestion.step_key);
+ const matchedStep = steps.find((s) => s.id === suggestion.step_key || s._key === suggestion.step_key);
   const matchedStepIndex = matchedStep ? steps.indexOf(matchedStep) : 0;
 
   return (

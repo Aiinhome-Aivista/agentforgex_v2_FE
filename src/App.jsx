@@ -9,7 +9,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 export default function App() {
   const tree = (
     <AuthProvider>
-      <BrowserRouter basename="/agentforcex/v2">
+      <BrowserRouter basename="/agentforcex">
         <AppRoutes />
         <Chatbot />
       </BrowserRouter>

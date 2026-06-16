@@ -4,11 +4,11 @@ import { getAutomationArchitecture, runAutomationArchitecture } from "../../serv
 
 // Components
 import { ArchitectureHeader, ExecutionLog } from "./components/ArchitectureUI";
-import { 
-  ArchitectureCanvas, 
-  ArchitectureLane, 
-  ArchitectureEdge, 
-  ArchitectureNode 
+import {
+  ArchitectureCanvas,
+  ArchitectureLane,
+  ArchitectureEdge,
+  ArchitectureNode
 } from "./components/ArchitectureVisuals";
 import CompletionModal from "./components/CompletionModal";
 
@@ -191,7 +191,19 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
     // Actual API call
     try {
       if (stepKey) {
-        const sessionId = localStorage.getItem('session_id');
+        let sessionId = localStorage.getItem('session_id');
+        if (analysisId) {
+          try {
+            const rawAnalysis = localStorage.getItem(`analysis_${analysisId}`);
+            if (rawAnalysis) {
+              const parsedAnalysis = JSON.parse(rawAnalysis);
+              sessionId = parsedAnalysis?.process?.session_id || parsedAnalysis?.session_id || analysisId;
+            }
+          } catch (e) {
+            console.error('Failed to parse analysis data for session_id', e);
+          }
+        }
+
         const payload = {
           step_key: stepKey,
           session_id: sessionId
@@ -207,25 +219,40 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
             const parsed = JSON.parse(raw);
             let updated = false;
 
-            if (parsed.steps) {
-              const idx = parsed.steps.findIndex(s => s.id === sKey || s._key === sKey);
+            // If sKey is missing, try to get it from the suggestion itself
+            let effectiveSKey = sKey;
+            if (!effectiveSKey && parsed.step_key) effectiveSKey = parsed.step_key;
+            // Also check if we are updating analysis and don't have sKey
+            if (!effectiveSKey && key === 'analysis') {
+              const suggRaw = localStorage.getItem(`suggestion_${suggestionId}`);
+              if (suggRaw) {
+                const suggParsed = JSON.parse(suggRaw);
+                effectiveSKey = suggParsed.step_key;
+              }
+            }
+
+            if (parsed.steps && effectiveSKey) {
+              const idx = parsed.steps.findIndex(s => s.id === effectiveSKey || s._key === effectiveSKey);
               if (idx !== -1) {
                 parsed.steps[idx].automation_potential = 0;
                 updated = true;
               }
             }
 
-            if (parsed.top_automation_targets) {
-              const idx = parsed.top_automation_targets.findIndex(t => t.id === sKey || t._key === sKey);
+            if (parsed.top_automation_targets && effectiveSKey) {
+              const idx = parsed.top_automation_targets.findIndex(t => t.id === effectiveSKey || t._key === effectiveSKey);
               if (idx !== -1) {
                 parsed.top_automation_targets[idx].automation_potential = 0;
                 updated = true;
               }
             }
 
-            if (parsed.id === sKey || parsed._key === sKey || parsed.step_key === sKey) {
+            // Always update the suggestion itself
+            if (key === 'suggestion') {
               parsed.automation_potential = 0;
-              if (parsed.metrics) parsed.metrics.automation_potential = 0;
+              if (parsed.metrics) {
+                parsed.metrics.automation_potential = 0;
+              }
               updated = true;
             }
 
@@ -253,6 +280,8 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
       if (onComplete) onComplete();
     }, 500);
   };
+
+
 
   const hoveredNodeData = hoveredNode ? nodesById[hoveredNode] : null;
 
@@ -364,7 +393,7 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
                   isActive={false}
                   isDone={false}
                   isHovered={false}
-                  setHoveredNode={() => {}}
+                  setHoveredNode={() => { }}
                   nodeWidth={NODE_W}
                   nodeHeight={NODE_H}
                 />
@@ -382,11 +411,11 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
       className="w-full bg-white relative min-h-[860px] flex flex-col p-6"
     >
       <div className="relative h-full flex flex-col">
-        <ArchitectureHeader 
-          isRunning={isRunning} 
-          activeNodes={activeNodes} 
-          completedNodes={completedNodes} 
-          onReset={reset} 
+        <ArchitectureHeader
+          isRunning={isRunning}
+          activeNodes={activeNodes}
+          completedNodes={completedNodes}
+          onReset={reset}
           onRun={runFlow}
         />
 
@@ -465,11 +494,11 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
             </div>
           )}
 
-          <ExecutionLog 
-            log={log} 
-            logRef={logRef} 
-            currentStep={currentStep} 
-            totalSteps={runSequence.length} 
+          <ExecutionLog
+            log={log}
+            logRef={logRef}
+            currentStep={currentStep}
+            totalSteps={runSequence.length}
           />
         </div>
       </div>
@@ -485,10 +514,10 @@ export default function SapValidationWorkflow({ suggestionId, stepKey, analysisI
         }
       `}</style>
 
-      <CompletionModal 
-        isOpen={showCompleteModal} 
-        onClose={() => setShowCompleteModal(false)} 
-        apiResponse={apiResponse} 
+      <CompletionModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        apiResponse={apiResponse}
       />
     </div>
   );

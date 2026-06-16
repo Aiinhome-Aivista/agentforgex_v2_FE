@@ -36,10 +36,10 @@ import { generateSuggestionBlueprintPPTX } from "../../utils/processPptxGenerato
 // kind: "blueprint"  → NEW per Scenario 2 — calls the suggestion blueprint API
 const FORMATS = [
   // Technical Design
-  { id: "pdf", kind: "doc", label: "Export as PDF", Icon: FileIcon, iconCls: "text-red-400", fn: generatePDF },
-  { id: "word", kind: "doc", label: "Export as Word", Icon: FileText, iconCls: "text-blue-400", fn: generateDOCX },
-  { id: "pptx", kind: "doc", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
-  // Code
+  // { id: "pdf", kind: "doc", label: "Export as PDF", Icon: FileIcon, iconCls: "text-red-400", fn: generatePDF },
+  // { id: "word", kind: "doc", label: "Export as Word", Icon: FileText, iconCls: "text-blue-400", fn: generateDOCX },
+  // { id: "pptx", kind: "doc", label: "Export as PowerPoint", Icon: Presentation, iconCls: "text-orange-400", fn: generatePPTX },
+  // // Code
   { id: "code", kind: "code", label: "Download the Code", Icon: FileArchive, iconCls: "text-emerald-400" },
   // Blueprint (NEW)
   { id: "bp-pdf", kind: "blueprint", label: "Export Blueprint PDF", Icon: FileIcon, iconCls: "text-red-300", fn: generateSuggestionBlueprintPDF },
@@ -225,8 +225,7 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
             className="
               absolute right-0 top-12 w-64
     bg-[#0a0d18]
-    isolate
-    shadow-2xl
+   shadow-[0_12px_40px_rgba(0,0,0,0.8)]
     border border-white/10
     rounded-xl
     z-[9999]
@@ -238,7 +237,7 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
             <div className="p-1 flex flex-col gap-0.5">
 
               {/* Technical-design section */}
-              {techItems.map(({ id, label, Icon, iconCls }) => (
+              {/* {techItems.map(({ id, label, Icon, iconCls }) => (
                 <button
                   key={id}
                   onClick={() => handleDownload(id)}
@@ -253,11 +252,10 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
                   <Icon size={14} className={iconCls} />
                   <span>{label}</span>
                 </button>
-              ))}
-
+              ))} */}
               {/* Code section */}
               {codeItems.length > 0 && (
-                <div className="border-t border-white/10 my-1" />
+                <div className=" my-1" />
               )}
               {codeItems.map(({ id, label, Icon, iconCls }) => (
                 <button
@@ -276,11 +274,13 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
                   <span className="ml-auto text-[8px] text-emerald-400/70">ZIP</span>
                 </button>
               ))}
+               <div className="border-t border-white/10 my-1" />
 
+ 
               {/* Blueprint section (NEW) */}
               {bpItems.length > 0 && (
                 <>
-                  <div className="border-t border-white/10 my-1" />
+                  {/* <div className="my-1" />  */}
                   <div className="px-3 py-1.5 flex items-center gap-2">
                     <Layers size={11} className="text-brand-500/80" />
                     <span className="text-[9px] font-extrabold uppercase tracking-widest text-brand-500/80">
@@ -305,6 +305,9 @@ export default function SuggestionExportPdf({ suggestion, processData, onDropdow
                   <span>{label}</span>
                 </button>
               ))}
+
+
+
             </div>
           </div>
         )}

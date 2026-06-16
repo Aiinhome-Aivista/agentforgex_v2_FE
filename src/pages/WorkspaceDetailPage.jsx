@@ -46,6 +46,10 @@ export default function WorkspaceDetailPage() {
         if (r.data?.analysis_data) {
           localStorage.setItem(`analysis_${id}`, JSON.stringify(r.data.analysis_data))
         }
+        if (r.data?.process_key) {
+          sessionStorage.setItem(`workspace_${id}_process_key`, r.data.process_key);
+          window.dispatchEvent(new Event('workspace-process-key-updated'));
+        }
       } else {
         setError(r?.message || 'Workspace not found')
       }
@@ -57,7 +61,7 @@ export default function WorkspaceDetailPage() {
     }
   }, [id])
 
-  useReanalyzeListener(id, {
+  useReanalyzeListener(ws?.process_key || id, {
     onReanalyzed: (detail) => {
       console.log("[WorkspaceDetailPage] onReanalyzed detail:", detail)
       // Start loader immediately AFTER re-analysis completes in chat section
@@ -99,11 +103,41 @@ export default function WorkspaceDetailPage() {
         if (r.data?.analysis_data) {
           localStorage.setItem(`analysis_${id}`, JSON.stringify(r.data.analysis_data))
         }
+        if (r.data?.process_key) {
+          sessionStorage.setItem(`workspace_${id}_process_key`, r.data.process_key);
+          window.dispatchEvent(new Event('workspace-process-key-updated'));
+        }
       })
       .catch((e) => { if (!cancelled) setError(e?.message || 'Could not load workspace') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [id])
+
+  // Listen for localStorage changes from other tabs (like Agent run completion)
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === `analysis_${id}`) {
+        try {
+          const freshData = JSON.parse(e.newValue);
+          if (freshData) {
+            setWs((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                analysis_data: freshData,
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Failed to parse storage update", err);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [id]);
+
+
 
   const handleDelete = async () => {
     setDeleting(true); setError('')

@@ -153,10 +153,32 @@ export default function Chatbot() {
   const scrollContainerRef = useRef(null);
   const inputRef = useRef(null);
 
+  const workspaceIdMatch = location.pathname.match(/\/workspaces\/([^/?]+)/);
+  const workspaceId = workspaceIdMatch ? workspaceIdMatch[1] : null;
+
+  const [workspaceProcessKey, setWorkspaceProcessKey] = useState(null);
+
+  useEffect(() => {
+    if (workspaceId) {
+      const stored = sessionStorage.getItem(`workspace_${workspaceId}_process_key`);
+      if (stored) setWorkspaceProcessKey(stored);
+
+      const handleStorage = () => {
+        const updated = sessionStorage.getItem(`workspace_${workspaceId}_process_key`);
+        if (updated) setWorkspaceProcessKey(updated);
+      };
+      window.addEventListener('workspace-process-key-updated', handleStorage);
+      return () => window.removeEventListener('workspace-process-key-updated', handleStorage);
+    } else {
+      setWorkspaceProcessKey(null);
+    }
+  }, [workspaceId]);
+
   const processKey =
     params.id ||
     location.pathname.match(/\/analysis\/([^/?]+)/)?.[1] ||
     location.pathname.match(/\/suggestion\/([^/?]+)/)?.[1] ||
+    workspaceProcessKey ||
     null;
 
   const isVisiblePath =
