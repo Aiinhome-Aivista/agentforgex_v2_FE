@@ -69,8 +69,26 @@ export default function AnalysisPage() {
         const freshAnalysisData = findAnalysisData(detail)
         console.log("[AnalysisPage] located freshAnalysisData:", freshAnalysisData)
         if (freshAnalysisData) {
-          setResult(freshAnalysisData)
-          localStorage.setItem(`analysis_${id}`, JSON.stringify(freshAnalysisData))
+          const newProcessKey = freshAnalysisData.process_key || freshAnalysisData.process?._key || detail.newProcessKey;
+          setResult(freshAnalysisData);
+          
+          if (newProcessKey && newProcessKey !== id) {
+            localStorage.setItem(`analysis_${newProcessKey}`, JSON.stringify(freshAnalysisData));
+            
+            try {
+              const afxLastStr = localStorage.getItem('afx_last_analysis');
+              const afxLast = afxLastStr ? JSON.parse(afxLastStr) : { user_input: "" };
+              afxLast.session_id = newProcessKey;
+              afxLast.analysis = freshAnalysisData;
+              localStorage.setItem('afx_last_analysis', JSON.stringify(afxLast));
+            } catch (err) {
+              console.error("Failed to update afx_last_analysis:", err);
+            }
+            
+            navigate(`/analysis/${newProcessKey}`, { replace: true });
+          } else {
+            localStorage.setItem(`analysis_${id}`, JSON.stringify(freshAnalysisData));
+          }
         }
         setIsReanalyzing(false)
       }, 3500)

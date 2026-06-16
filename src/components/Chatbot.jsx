@@ -141,7 +141,6 @@ export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [isBouncing, setIsBouncing] = useState(true);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [isSending, setIsSending] = useState(false);
 
   // Pending context awaiting Yes/No confirmation.  When set, the next
@@ -174,12 +173,43 @@ export default function Chatbot() {
     }
   }, [workspaceId]);
 
-  const processKey =
+  const urlProcessKey =
     params.id ||
     location.pathname.match(/\/analysis\/([^/?]+)/)?.[1] ||
     location.pathname.match(/\/suggestion\/([^/?]+)/)?.[1] ||
     workspaceProcessKey ||
     null;
+
+  const [baseProcessKey, setBaseProcessKey] = useState(urlProcessKey);
+  const [activeProcessKey, setActiveProcessKey] = useState(() => {
+    if (!urlProcessKey) return null;
+    return sessionStorage.getItem(`activeProcessKey_${urlProcessKey}`) || urlProcessKey;
+  });
+
+  const [messages, setMessages] = useState(() => {
+    if (urlProcessKey) {
+      const stored = sessionStorage.getItem(
+        `chat_messages_${urlProcessKey}`
+      );
+
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) { }
+      }
+    }
+
+    return [INITIAL_MESSAGE];
+  });
+
+  useEffect(() => {
+    if (activeProcessKey && messages.length > 0) {
+      sessionStorage.setItem(
+        `chat_messages_${activeProcessKey}`,
+        JSON.stringify(messages)
+      );
+    }
+  }, [messages, activeProcessKey]);
 
   const isVisiblePath =
     location.pathname.includes('/analysis/') ||
@@ -193,12 +223,41 @@ export default function Chatbot() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Clear chat history when switching to a different analysis/suggestion
+  // Load or clear chat history when switching to a different analysis/suggestion URL
   useEffect(() => {
-    setMessages([INITIAL_MESSAGE]);
-    setPendingContext(null);
-    setPendingMessageId(null);
-  }, [processKey]);
+    if (urlProcessKey !== baseProcessKey) {
+  
+
+      setBaseProcessKey(urlProcessKey);
+
+      if (urlProcessKey === activeProcessKey) {
+        // We already updated the activeProcessKey during re-analysis, 
+        // so the current messages state is already correct.
+        return;
+      }
+
+      const storedKey = urlProcessKey ? sessionStorage.getItem(`activeProcessKey_${urlProcessKey}`) : null;
+      const newActiveKey = storedKey || urlProcessKey;
+      setActiveProcessKey(newActiveKey);
+
+      let loadedMessages = [INITIAL_MESSAGE];
+
+      if (urlProcessKey) {
+        const storedMsgs = sessionStorage.getItem(
+          `chat_messages_${urlProcessKey}`
+        );
+
+        if (storedMsgs) {
+          try {
+            loadedMessages = JSON.parse(storedMsgs);
+          } catch (e) { }
+        }
+      }
+      setMessages(loadedMessages);
+      setPendingContext(null);
+      setPendingMessageId(null);
+    }
+  }, [urlProcessKey, baseProcessKey, activeProcessKey]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -244,7 +303,7 @@ export default function Chatbot() {
     }]);
 
     try {
-      const resp = await sendChatMessage(text, processKey, pendingContext);
+      const resp = await sendChatMessage(text, activeProcessKey, pendingContext);
       const data = resp?.data ?? resp ?? {};
       const answer = data.answer ||
         "I couldn't process that — please try a different question.";
@@ -299,11 +358,11 @@ export default function Chatbot() {
       setIsSending(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, isSending, processKey, pendingContext, pendingMessageId]);
+  }, [message, isSending, activeProcessKey, pendingContext, pendingMessageId]);
 
   // ─── handler: actually run the re-analysis ────────────────────────────
   const runReanalysis = useCallback(async (ctx, offerMsgId) => {
-    if (!processKey || !ctx) return;
+    if (!activeProcessKey || !ctx) return;
 
     // Update the offer bubble to "running"
     if (offerMsgId) {
@@ -321,7 +380,7 @@ export default function Chatbot() {
     }]);
 
     try {
-      const resp = await triggerReanalysis(processKey, ctx);
+      const resp = await triggerReanalysis(activeProcessKey, ctx);
       const data = resp?.data ?? resp ?? {};
       const ok = data.status === true;
       const revisionCount = data.revision_count ?? 0;
@@ -342,17 +401,42 @@ export default function Chatbot() {
         }));
 
       if (ok) {
+        // Recursively find the analysis data containing the process
+        const findAnalysisData = (obj) => {
+          if (!obj || typeof obj !== 'object') return null;
+          if (obj.steps && obj.process) return obj;
+          if (obj.data) {
+            const res = findAnalysisData(obj.data);
+            if (res) return res;
+          }
+          if (obj.process) {
+            const res = findAnalysisData(obj.process);
+            if (res) return res;
+          }
+          if (obj.analysis) {
+            const res = findAnalysisData(obj.analysis);
+            if (res) return res;
+          }
+          return null;
+        };
+
+        const analysisData = findAnalysisData(data) || data;
+        const newProcessKey = analysisData.process_key || analysisData.process?._key;
+        
+        if (newProcessKey && newProcessKey !== activeProcessKey) {
+          setActiveProcessKey(newProcessKey);
+        }
         window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyzed', {
-          detail: { processKey, revisionCount, refreshedAt: Date.now(), data },
+          detail: { processKey: baseProcessKey, revisionCount, refreshedAt: Date.now(), data },
         }));
       } else {
         window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyze-failed', {
-          detail: { processKey, message: data.message || 'unknown error', refreshedAt: Date.now() },
+          detail: { processKey: baseProcessKey, message: data.message || 'unknown error', refreshedAt: Date.now() },
         }));
       }
     } catch (err) {
       window.dispatchEvent(new CustomEvent('agentforgex:process-reanalyze-failed', {
-        detail: { processKey, error: err.message, refreshedAt: Date.now() },
+        detail: { processKey: baseProcessKey, error: err.message, refreshedAt: Date.now() },
       }));
 
       setMessages((prev) => prev
@@ -367,7 +451,7 @@ export default function Chatbot() {
           isError: true,
         }));
     }
-  }, [processKey]);
+  }, [activeProcessKey, baseProcessKey]);
 
   // ─── handlers: Yes / No button clicks ─────────────────────────────────
   const handleYes = useCallback(async (msg) => {
@@ -444,12 +528,12 @@ export default function Chatbot() {
             <div key={msg.id} className={`flex flex-col ${msg.isBot ? 'items-start' : 'items-end'}`}>
               <div
                 className={`max-w-[85%] rounded-2xl p-3 text-sm whitespace-pre-wrap break-words ${msg.isBot
-                    ? msg.isError
-                      ? 'bg-red-500/20 text-red-200 rounded-tl-none'
-                      : msg.isSuccess
-                        ? 'bg-emerald-500/15 text-emerald-100 rounded-tl-none border border-emerald-500/30'
-                        : 'bg-[#27272A] text-gray-200 rounded-tl-none'
-                    : 'bg-[#00FF9D] text-[#0A0A0B] font-medium rounded-tr-none'
+                  ? msg.isError
+                    ? 'bg-red-500/20 text-red-200 rounded-tl-none'
+                    : msg.isSuccess
+                      ? 'bg-emerald-500/15 text-emerald-100 rounded-tl-none border border-emerald-500/30'
+                      : 'bg-[#27272A] text-gray-200 rounded-tl-none'
+                  : 'bg-[#00FF9D] text-[#0A0A0B] font-medium rounded-tr-none'
                   }`}
               >
                 {msg.isTyping ? (
@@ -467,7 +551,7 @@ export default function Chatbot() {
                 <div className="mt-2 flex flex-wrap gap-2 items-center">
                   <button
                     onClick={() => handleYes(msg)}
-                    disabled={!processKey || isSending}
+                    disabled={!activeProcessKey || isSending}
                     className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#00FF9D] text-[#0A0A0B] text-xs font-bold uppercase tracking-wider hover:bg-[#00e68d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Re-create the process map"
                   >

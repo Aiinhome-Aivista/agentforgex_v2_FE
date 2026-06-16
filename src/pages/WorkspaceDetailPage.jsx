@@ -72,14 +72,22 @@ export default function WorkspaceDetailPage() {
         const freshAnalysisData = findAnalysisData(detail)
         console.log("[WorkspaceDetailPage] located freshAnalysisData:", freshAnalysisData)
         if (freshAnalysisData) {
+          const newProcessKey = freshAnalysisData.process_key || freshAnalysisData.process?._key || detail.newProcessKey;
+          
           setWs((prev) => {
             if (!prev) return null
             return {
               ...prev,
               analysis_data: freshAnalysisData,
+              ...(newProcessKey ? { process_key: newProcessKey } : {})
             }
           })
           localStorage.setItem(`analysis_${id}`, JSON.stringify(freshAnalysisData))
+          
+          if (newProcessKey) {
+            sessionStorage.setItem(`workspace_${id}_process_key`, newProcessKey);
+            window.dispatchEvent(new Event('workspace-process-key-updated'));
+          }
         }
         setIsReanalyzing(false)
       }, 3500)
